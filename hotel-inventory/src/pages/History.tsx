@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { LogTimeline } from '@/components/logs/LogTimeline'
+import { useLogs, exportLogsToCSV } from '@/hooks/useLogs'
 import { useToast } from '@/hooks/use-toast'
 
 const actionTypes = [
@@ -31,12 +32,48 @@ export default function History() {
   const [dateTo, setDateTo] = useState('')
   const [showFilters, setShowFilters] = useState(false)
 
+  // Fetch logs with same filters used by LogTimeline
+  const { data: logs } = useLogs({
+    action: actionFilter,
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
+  })
+
   const handleExport = () => {
-    // Placeholder - will be replaced with actual export logic
-    toast({
-      title: 'Exportando...',
-      description: 'El archivo CSV se descargara en breve',
-    })
+    if (!logs || logs.length === 0) {
+      toast({
+        title: 'Sin datos',
+        description: 'No hay registros para exportar con los filtros actuales.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      const formattedLogs = logs.map(log => ({
+        created_at: log.created_at,
+        action: log.action,
+        user: log.user as { full_name: string } | undefined,
+        entity_type: log.entity_type,
+        entity_id: log.entity_id,
+        location: log.location ?? undefined,
+        details: (log.details || {}) as Record<string, unknown>,
+      }))
+
+      exportLogsToCSV(formattedLogs)
+
+      toast({
+        title: 'Exportado',
+        description: `Se exportaron ${logs.length} registros a CSV.`,
+      })
+    } catch (error) {
+      console.error('[History] Export error:', error)
+      toast({
+        title: 'Error',
+        description: 'No se pudo exportar el historial.',
+        variant: 'destructive',
+      })
+    }
   }
 
   return (

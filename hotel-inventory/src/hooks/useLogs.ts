@@ -93,6 +93,57 @@ export function useCreateLog() {
   })
 }
 
+const LOCATION_LABELS: Record<string, string> = {
+  bodega: 'Bodega',
+  bar_casa_sanz: 'Bar Casa Sanz',
+  bar_hotel_bidasoa: 'Bar Hotel Bidasoa',
+}
+
+const ACTION_LABELS: Record<string, string> = {
+  stock_adjustment: 'Ajuste de Stock',
+  request_created: 'Solicitud Creada',
+  request_approved: 'Solicitud Aprobada',
+  request_rejected: 'Solicitud Rechazada',
+  request_delivered: 'Solicitud Entregada',
+  transfer_created: 'Traspaso Creado',
+  transfer_completed: 'Traspaso Completado',
+}
+
+function formatStockMovements(details: Record<string, unknown>): string {
+  const movements = details.stock_movements as Array<{
+    product_name: string
+    bodega_before: number
+    bodega_after: number
+    destination_before: number
+    destination_after: number
+  }> | undefined
+
+  if (!movements || movements.length === 0) return ''
+
+  const destination = details.destination as string | undefined
+  const destName = destination ? (LOCATION_LABELS[destination] || destination) : 'Destino'
+
+  return movements.map(m => {
+    const bodegaBefore = Math.round(m.bodega_before / 750 * 10) / 10
+    const bodegaAfter = Math.round(m.bodega_after / 750 * 10) / 10
+    const destBefore = Math.round(m.destination_before / 750 * 10) / 10
+    const destAfter = Math.round(m.destination_after / 750 * 10) / 10
+    return `${m.product_name}: Bodega ${bodegaBefore} -> ${bodegaAfter} bot. | ${destName} ${destBefore} -> ${destAfter} bot.`
+  }).join(' ; ')
+}
+
+function formatItemsList(details: Record<string, unknown>): string {
+  const items = details.items as Array<{
+    name: string
+    quantity: number
+    unit: string
+  }> | undefined
+
+  if (!items || items.length === 0) return ''
+
+  return items.map(i => `${i.name} x${i.quantity} ${i.unit}`).join(', ')
+}
+
 export function exportLogsToCSV(logs: Array<{
   created_at: string
   action: string
@@ -104,23 +155,30 @@ export function exportLogsToCSV(logs: Array<{
 }>) {
   const headers = [
     'Fecha',
+    'Hora',
     'Accion',
     'Usuario',
-    'Tipo',
-    'ID',
     'Ubicacion',
-    'Detalles',
+    'Cambio de Estado',
+    'Productos',
+    'Movimientos de Stock',
   ]
 
-  const rows = logs.map((log) => [
-    new Date(log.created_at).toLocaleString('es-CL'),
-    log.action,
-    log.user?.full_name || 'N/A',
-    log.entity_type,
-    log.entity_id,
-    log.location || 'N/A',
-    JSON.stringify(log.details),
-  ])
+  const rows = logs.map((log) => {
+    const details = log.details || {}
+    const date = new Date(log.created_at)
+
+    return [
+      date.toLocaleDateString('es-CL'),
+      date.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
+      ACTION_LABELS[log.action] || log.action,
+      log.user?.full_name || 'N/A',
+      log.location ? (LOCATION_LABELS[log.location] || log.location) : 'N/A',
+      (details.status_change as string) || '',
+      formatItemsList(details),
+      formatStockMovements(details),
+    ]
+  })
 
   const csvContent = [
     headers.join(','),
@@ -129,11 +187,13 @@ export function exportLogsToCSV(logs: Array<{
     ),
   ].join('\n')
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  // Add BOM for Excel UTF-8 compatibility
+  const BOM = '\uFEFF'
+  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' })
   const link = document.createElement('a')
   const url = URL.createObjectURL(blob)
   link.setAttribute('href', url)
-  link.setAttribute('download', `logs_${new Date().toISOString().split('T')[0]}.csv`)
+  link.setAttribute('download', `historial_inventario_${new Date().toISOString().split('T')[0]}.csv`)
   link.style.visibility = 'hidden'
   document.body.appendChild(link)
   link.click()
