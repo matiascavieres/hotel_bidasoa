@@ -45,11 +45,14 @@ export default function Login() {
     const { error } = await signIn(data.email, data.password)
 
     if (error) {
+      console.error('[Login] Error:', error.message)
       // Provide more specific error messages
       if (error.message.includes('Email not confirmed')) {
         setError('Debes confirmar tu email antes de iniciar sesion. Revisa tu bandeja de entrada.')
       } else if (error.message.includes('Invalid login credentials')) {
         setError('Credenciales invalidas. Verifica tu email y contrasena.')
+      } else if (error.message.includes('Invalid API key') || error.message.includes('apikey')) {
+        setError('Error de configuracion: API Key invalida. Contacta al administrador.')
       } else {
         setError(error.message || 'Error al iniciar sesion. Por favor, intenta de nuevo.')
       }
