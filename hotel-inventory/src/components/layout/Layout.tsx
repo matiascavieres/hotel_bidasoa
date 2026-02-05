@@ -13,7 +13,7 @@ export function Layout() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-background">
       {/* Desktop Sidebar */}
       <div className="hidden md:block">
         <Sidebar collapsed={sidebarCollapsed} />
@@ -22,7 +22,7 @@ export function Layout() {
       {/* Main content area */}
       <div
         className={cn(
-          'flex flex-col transition-all duration-300',
+          'flex w-full max-w-full flex-col overflow-x-hidden transition-all duration-300',
           sidebarCollapsed ? 'md:ml-16' : 'md:ml-64'
         )}
       >
@@ -31,7 +31,7 @@ export function Layout() {
           onToggleSidebar={toggleSidebar}
         />
 
-        <main className="flex-1 p-4 pb-20 md:p-6 md:pb-6">
+        <main className="w-full max-w-full flex-1 overflow-x-hidden px-3 pb-20 pt-4 sm:px-4 md:p-6 md:pb-6">
           <Outlet />
         </main>
       </div>
