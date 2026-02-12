@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Warehouse } from 'lucide-react'
+import { ArrowLeft, Warehouse, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
@@ -17,6 +17,7 @@ import { ProductCart } from '@/components/requests/ProductCart'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/hooks/use-toast'
 import { useCreateRequest } from '@/hooks/useRequests'
+import { useInventory } from '@/hooks/useInventory'
 import { LOCATION_NAMES, type CartItem, type LocationType } from '@/types'
 
 // Ubicaciones de bares (destinos válidos para solicitudes)
@@ -27,9 +28,21 @@ export default function NewRequest() {
   const { profile, user } = useAuth()
   const { toast } = useToast()
   const createRequest = useCreateRequest()
+  const { data: bodegaInventory } = useInventory('bodega')
   const [cart, setCart] = useState<CartItem[]>([])
   const [notes, setNotes] = useState('')
   const [selectedLocation, setSelectedLocation] = useState<LocationType | ''>('')
+
+  // Mapa de stock de bodega: productId → quantity_ml
+  const bodegaStockMap = useMemo(() => {
+    const map = new Map<string, number>()
+    if (bodegaInventory) {
+      for (const inv of bodegaInventory) {
+        map.set(inv.product_id, inv.quantity_ml)
+      }
+    }
+    return map
+  }, [bodegaInventory])
 
   // Pre-seleccionar la ubicación del usuario si es un bar
   useEffect(() => {
@@ -65,6 +78,39 @@ export default function NewRequest() {
     setCart(cart.filter((item) => item.product.id !== productId))
   }
 
+  // Validar si hay items con problemas de stock
+  const getCartStockIssues = () => {
+    const issues: string[] = []
+    for (const item of cart) {
+      const stockMl = bodegaStockMap.get(item.product.id) ?? 0
+      const formatMl = item.product.format_ml || 750
+      let requestedMl: number
+      switch (item.unit_type) {
+        case 'bottles':
+          requestedMl = item.quantity * formatMl
+          break
+        case 'ml':
+          requestedMl = item.quantity
+          break
+        case 'units':
+          requestedMl = item.quantity * formatMl
+          break
+        default:
+          requestedMl = item.quantity * formatMl
+      }
+
+      if (stockMl === 0) {
+        issues.push(`${item.product.name}: sin stock en bodega`)
+      } else if (requestedMl > stockMl) {
+        issues.push(`${item.product.name}: pedido excede stock disponible`)
+      }
+    }
+    return issues
+  }
+
+  const stockIssues = cart.length > 0 ? getCartStockIssues() : []
+  const hasStockIssues = stockIssues.length > 0
+
   const handleSubmit = async () => {
     if (!selectedLocation) {
       toast({
@@ -88,6 +134,16 @@ export default function NewRequest() {
       toast({
         title: 'Error',
         description: 'No se pudo identificar tu usuario',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    // Validar stock de bodega
+    if (hasStockIssues) {
+      toast({
+        title: 'Stock insuficiente en bodega',
+        description: stockIssues.join('. '),
         variant: 'destructive',
       })
       return
@@ -171,7 +227,7 @@ export default function NewRequest() {
           </div>
           {selectedLocation && (
             <p className="text-sm text-muted-foreground border-l-2 border-primary pl-3">
-              Los productos serán enviados desde <strong>Bodega</strong> hacia{' '}
+              Los productos seran enviados desde <strong>Bodega</strong> hacia{' '}
               <strong>{LOCATION_NAMES[selectedLocation]}</strong>
             </p>
           )}
@@ -202,6 +258,7 @@ export default function NewRequest() {
                 items={cart}
                 onUpdateQuantity={handleUpdateQuantity}
                 onRemove={handleRemoveItem}
+                bodegaStock={bodegaStockMap}
               />
             </CardContent>
           </Card>
@@ -224,13 +281,31 @@ export default function NewRequest() {
             </CardContent>
           </Card>
 
+          {hasStockIssues && (
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/50 bg-destructive/5 p-3">
+              <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+              <div className="text-sm text-destructive">
+                <p className="font-medium">No se puede enviar la solicitud:</p>
+                <ul className="mt-1 list-disc pl-4">
+                  {stockIssues.map((issue, i) => (
+                    <li key={i}>{issue}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
           <Button
             onClick={handleSubmit}
-            disabled={!selectedLocation || cart.length === 0 || createRequest.isPending}
+            disabled={!selectedLocation || cart.length === 0 || createRequest.isPending || hasStockIssues}
             className="w-full"
             size="lg"
           >
-            {createRequest.isPending ? 'Enviando...' : 'Enviar Solicitud'}
+            {createRequest.isPending
+              ? 'Enviando...'
+              : hasStockIssues
+                ? 'Stock insuficiente'
+                : 'Enviar Solicitud'}
           </Button>
         </div>
       </div>
