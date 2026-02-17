@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import {
   History,
+  TrendingUp,
   Users,
   BookOpen,
   Bell,
@@ -24,6 +25,12 @@ export default function MoreMenu() {
       href: '/historial',
       icon: History,
       show: true,
+    },
+    {
+      label: 'Analisis de Ventas',
+      href: '/ventas',
+      icon: TrendingUp,
+      show: isAdmin || profile?.role === 'bodeguero',
     },
     {
       label: 'Usuarios',

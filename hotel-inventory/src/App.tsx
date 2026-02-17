@@ -14,6 +14,7 @@ import History from '@/pages/History'
 import AdminUsers from '@/pages/admin/Users'
 import AdminCatalog from '@/pages/admin/Catalog'
 import AdminAlerts from '@/pages/admin/Alerts'
+import SalesAnalysis from '@/pages/SalesAnalysis'
 import MoreMenu from '@/pages/MoreMenu'
 import type { UserRole } from '@/types'
 
@@ -116,6 +117,14 @@ function AppRoutes() {
           }
         />
         <Route path="/historial" element={<History />} />
+        <Route
+          path="/ventas"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'bodeguero']}>
+              <SalesAnalysis />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/menu" element={<MoreMenu />} />
 
         {/* Admin routes */}

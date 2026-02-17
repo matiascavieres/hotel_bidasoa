@@ -182,6 +182,19 @@ export interface StockSummary {
   pending_requests: number
 }
 
+// Sales data from POS analysis
+export interface SalesData {
+  id: string
+  receta: string
+  grupo: string
+  familia: string
+  cantidad_2024: number
+  cantidad_2025: number
+  total: number
+  daily_avg: number
+  created_at: string
+}
+
 // Location display names
 export const LOCATION_NAMES: Record<LocationType, string> = {
   bodega: 'Bodega',

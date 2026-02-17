@@ -5,6 +5,7 @@ import {
   ClipboardList,
   ArrowLeftRight,
   History,
+  TrendingUp,
   Users,
   Settings,
   BookOpen,
@@ -52,6 +53,12 @@ const mainNavItems: NavItem[] = [
     label: 'Historial',
     href: '/historial',
     icon: History,
+  },
+  {
+    label: 'Ventas',
+    href: '/ventas',
+    icon: TrendingUp,
+    roles: ['admin', 'bodeguero'],
   },
 ]
 

@@ -401,6 +401,42 @@ export type Database = {
           }
         ]
       }
+      sales_data: {
+        Row: {
+          id: string
+          receta: string
+          grupo: string
+          familia: string
+          cantidad_2024: number
+          cantidad_2025: number
+          total: number
+          daily_avg: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          receta: string
+          grupo: string
+          familia?: string
+          cantidad_2024?: number
+          cantidad_2025?: number
+          total?: number
+          daily_avg?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          receta?: string
+          grupo?: string
+          familia?: string
+          cantidad_2024?: number
+          cantidad_2025?: number
+          total?: number
+          daily_avg?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
