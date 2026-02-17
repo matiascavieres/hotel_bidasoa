@@ -1,6 +1,14 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Package, AlertTriangle, XCircle, TrendingDown, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useAuth } from '@/context/AuthContext'
 import { useInventory, useProducts } from '@/hooks/useInventory'
 import { useTriggeredAlerts } from '@/hooks/useAlertConfigs'
@@ -8,10 +16,19 @@ import { LOCATION_NAMES, type LocationType } from '@/types'
 
 export function StockSummary() {
   const { profile } = useAuth()
+  const navigate = useNavigate()
 
-  // Determine which location to show based on role
+  const canSwitchLocation = profile?.role === 'admin' || profile?.role === 'bodeguero'
+
+  const [selectedLocation, setSelectedLocation] = useState<LocationType | 'all'>(
+    canSwitchLocation ? 'all' : (profile?.location ?? 'all')
+  )
+
+  // Determine which location to show based on selection
   const locationFilter: LocationType | undefined =
-    profile?.role === 'bartender' ? profile?.location ?? undefined : undefined
+    canSwitchLocation
+      ? (selectedLocation === 'all' ? undefined : selectedLocation)
+      : (profile?.role === 'bartender' ? profile?.location ?? undefined : undefined)
 
   const { data: inventory, isLoading: inventoryLoading } = useInventory(locationFilter)
   const { data: products, isLoading: productsLoading } = useProducts()
@@ -58,6 +75,7 @@ export function StockSummary() {
       value: stats.totalProducts.toString(),
       icon: Package,
       description: 'en catálogo',
+      href: '/stock',
     },
     {
       title: 'Stock Bajo',
@@ -65,6 +83,7 @@ export function StockSummary() {
       icon: TrendingDown,
       description: 'productos',
       variant: 'warning' as const,
+      href: '/stock',
     },
     {
       title: 'Sin Stock',
@@ -72,6 +91,7 @@ export function StockSummary() {
       icon: XCircle,
       description: 'productos',
       variant: 'destructive' as const,
+      href: '/stock',
     },
     {
       title: 'Alertas',
@@ -79,17 +99,35 @@ export function StockSummary() {
       icon: AlertTriangle,
       description: 'activas',
       variant: 'warning' as const,
+      href: canSwitchLocation ? '/admin/alertas' : '/stock',
     },
   ]
+
+  const locationSelector = canSwitchLocation ? (
+    <Select
+      value={selectedLocation}
+      onValueChange={(v) => setSelectedLocation(v as LocationType | 'all')}
+    >
+      <SelectTrigger className="w-[220px]">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">Todas las ubicaciones</SelectItem>
+        {(Object.entries(LOCATION_NAMES) as [LocationType, string][]).map(([key, name]) => (
+          <SelectItem key={key} value={key}>{name}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  ) : profile?.location ? (
+    <p className="text-sm text-muted-foreground">
+      Ubicación: <span className="font-medium">{LOCATION_NAMES[profile.location]}</span>
+    </p>
+  ) : null
 
   if (isLoading) {
     return (
       <div className="space-y-4">
-        {profile?.location && (
-          <p className="text-sm text-muted-foreground">
-            Ubicación: <span className="font-medium">{LOCATION_NAMES[profile.location]}</span>
-          </p>
-        )}
+        {locationSelector}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i}>
@@ -110,15 +148,15 @@ export function StockSummary() {
 
   return (
     <div className="space-y-4">
-      {profile?.location && (
-        <p className="text-sm text-muted-foreground">
-          Ubicación: <span className="font-medium">{LOCATION_NAMES[profile.location]}</span>
-        </p>
-      )}
+      {locationSelector}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat) => (
-          <Card key={stat.title}>
+          <Card
+            key={stat.title}
+            className="cursor-pointer transition-shadow hover:shadow-md"
+            onClick={() => navigate(stat.href)}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
               <stat.icon

@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useProducts } from '@/hooks/useProducts'
-import { useInventory } from '@/hooks/useInventory'
+import { useInventory, useCategories } from '@/hooks/useInventory'
 import type { CartItem, Product, UnitType } from '@/types'
 
 interface ProductSelectorProps {
@@ -22,7 +22,9 @@ interface ProductSelectorProps {
 export function ProductSelector({ onAddToCart }: ProductSelectorProps) {
   const { data: products, isLoading, error } = useProducts()
   const { data: bodegaInventory } = useInventory('bodega')
+  const { data: categories } = useCategories()
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [quantity, setQuantity] = useState(1)
   const [unit, setUnit] = useState<UnitType>('bottles')
@@ -38,10 +40,12 @@ export function ProductSelector({ onAddToCart }: ProductSelectorProps) {
     return map
   }, [bodegaInventory])
 
-  const filteredProducts = products?.filter((product) =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    product.code.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || []
+  const filteredProducts = products?.filter((product) => {
+    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.code.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesCategory = selectedCategory === 'all' || product.category_id === selectedCategory
+    return matchesSearch && matchesCategory
+  }) || []
 
   const getStockInfo = (product: Product) => {
     const stockMl = bodegaStockMap.get(product.id) ?? 0
@@ -88,15 +92,28 @@ export function ProductSelector({ onAddToCart }: ProductSelectorProps) {
 
   return (
     <div className="space-y-4">
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Buscar producto..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9"
-        />
+      {/* Category filter + Search */}
+      <div className="flex gap-2">
+        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+          <SelectTrigger className="w-[160px] shrink-0">
+            <SelectValue placeholder="Categoría" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas</SelectItem>
+            {categories?.map((cat) => (
+              <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar producto..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
       </div>
 
       {/* Product list */}
