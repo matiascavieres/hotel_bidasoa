@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Loader2 } from 'lucide-react'
+import { Loader2, ArrowLeft } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { getDefaultRoute } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
@@ -67,7 +67,15 @@ export default function Login() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+      <div className="w-full max-w-md space-y-4">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Volver a inicio
+        </Link>
+      <Card className="w-full">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-2xl font-bold">Hotel Bidasoa</CardTitle>
           <CardDescription>
@@ -127,6 +135,7 @@ export default function Login() {
           </form>
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }
