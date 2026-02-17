@@ -84,7 +84,7 @@ export function SalesTable({ data, isLoading, error, periodo }: SalesTableProps)
   return (
     <>
       {/* Desktop Table */}
-      <div className="hidden md:block">
+      <div className="hidden lg:block">
         <div className="rounded-md border">
           <table className="w-full">
             <thead>
@@ -187,37 +187,47 @@ export function SalesTable({ data, isLoading, error, periodo }: SalesTableProps)
       </div>
 
       {/* Mobile Cards */}
-      <div className="grid gap-3 md:hidden">
+      <div className="grid gap-2 lg:hidden">
         {sortedData.map((item, index) => (
           <Card key={item.id}>
-            <CardContent className="p-4">
+            <CardContent className="p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">{index + 1}.</span>
-                    <p className="font-medium truncate">{item.receta}</p>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground shrink-0">{index + 1}.</span>
+                    <p className="text-sm font-medium truncate">{item.receta}</p>
                   </div>
-                  <Badge variant="outline" className="mt-1">{item.grupo}</Badge>
+                  <Badge variant="outline" className="mt-1 text-xs">{item.grupo}</Badge>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-lg font-bold">{formatNumber(getCantidad(item))}</p>
-                  <p className="text-xs text-muted-foreground">ventas</p>
+                  <p className="text-base font-bold tabular-nums">{formatNumber(getCantidad(item))}</p>
+                  <p className="text-[10px] text-muted-foreground">ventas</p>
                 </div>
               </div>
-              <div className="mt-2 grid grid-cols-3 gap-2 text-sm">
-                <div>
-                  <p className="text-muted-foreground">2024</p>
-                  <p className="font-medium">{formatNumber(item.cantidad_2024)}</p>
+              {periodo === 'total' && (
+                <div className="mt-2 grid grid-cols-3 gap-1 text-xs">
+                  <div>
+                    <p className="text-muted-foreground">2024</p>
+                    <p className="font-medium tabular-nums">{formatNumber(item.cantidad_2024)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">2025</p>
+                    <p className="font-medium tabular-nums">{formatNumber(item.cantidad_2025)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Prom/dia</p>
+                    <p className="font-medium tabular-nums">{item.daily_avg.toFixed(2)}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">2025</p>
-                  <p className="font-medium">{formatNumber(item.cantidad_2025)}</p>
+              )}
+              {periodo !== 'total' && (
+                <div className="mt-2 flex gap-3 text-xs">
+                  <div>
+                    <p className="text-muted-foreground">Prom/dia</p>
+                    <p className="font-medium tabular-nums">{item.daily_avg.toFixed(2)}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Prom/dia</p>
-                  <p className="font-medium">{item.daily_avg.toFixed(2)}</p>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         ))}

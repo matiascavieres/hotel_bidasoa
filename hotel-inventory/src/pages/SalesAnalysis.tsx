@@ -175,28 +175,28 @@ export default function SalesAnalysis() {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid gap-4 grid-cols-3">
+      <div className="grid gap-2 grid-cols-3">
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Productos</p>
+          <CardContent className="p-3">
+            <div className="flex items-center gap-1">
+              <TrendingUp className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <p className="text-xs text-muted-foreground truncate">Productos</p>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.count.toLocaleString('es-CL')}</p>
+            <p className="text-lg sm:text-2xl font-bold mt-1 tabular-nums">{stats.count.toLocaleString('es-CL')}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">
+          <CardContent className="p-3">
+            <p className="text-xs text-muted-foreground truncate">
               Total Ventas {periodo !== 'total' ? periodo : ''}
             </p>
-            <p className="text-2xl font-bold mt-1">{stats.totalVentas.toLocaleString('es-CL')}</p>
+            <p className="text-lg sm:text-2xl font-bold mt-1 tabular-nums">{stats.totalVentas.toLocaleString('es-CL')}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Prom. Diario Total</p>
-            <p className="text-2xl font-bold mt-1">{stats.avgDaily.toFixed(1)}</p>
+          <CardContent className="p-3">
+            <p className="text-xs text-muted-foreground truncate">Prom. Diario</p>
+            <p className="text-lg sm:text-2xl font-bold mt-1 tabular-nums">{stats.avgDaily.toFixed(1)}</p>
           </CardContent>
         </Card>
       </div>
