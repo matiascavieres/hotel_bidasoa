@@ -220,7 +220,14 @@ export function StockTable({
       {/* Desktop Table */}
       <div className="hidden md:block">
         <div className="rounded-md border">
-          <table className="w-full">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col className="w-[35%]" />
+              <col className="w-[15%]" />
+              <col className="w-[15%]" />
+              <col className="w-[15%]" />
+              <col className="w-[20%]" />
+            </colgroup>
             <thead>
               <tr className="border-b bg-muted/50">
                 <th
@@ -266,9 +273,9 @@ export function StockTable({
               {sortedProducts.map((product: EditingProduct) => (
                 <tr key={product.id} className="border-b hover:bg-muted/30">
                   <td className="px-2 py-2">
-                    <div>
-                      <p className="font-medium">{product.name}</p>
-                      <p className="text-sm text-muted-foreground">
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{product.name}</p>
+                      <p className="text-sm text-muted-foreground truncate">
                         {product.code} • {product.format_ml}ml
                       </p>
                     </div>
