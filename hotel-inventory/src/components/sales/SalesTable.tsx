@@ -187,9 +187,9 @@ export function SalesTable({ data, isLoading, error, periodo }: SalesTableProps)
       </div>
 
       {/* Mobile Cards */}
-      <div className="grid gap-2 lg:hidden">
+      <div className="grid gap-2 lg:hidden min-w-0">
         {sortedData.map((item, index) => (
-          <Card key={item.id}>
+          <Card key={item.id} className="overflow-hidden">
             <CardContent className="p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">

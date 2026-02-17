@@ -31,7 +31,7 @@ export function Layout() {
           onToggleSidebar={toggleSidebar}
         />
 
-        <main className="flex-1 overflow-x-auto px-3 pb-20 pt-4 sm:px-4 md:p-6 md:pb-6">
+        <main className="flex-1 overflow-x-hidden px-3 pb-20 pt-4 sm:px-4 md:overflow-x-auto md:p-6 md:pb-6">
           <Outlet />
         </main>
       </div>
