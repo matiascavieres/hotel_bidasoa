@@ -3,6 +3,7 @@ import { Download, Search, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
@@ -16,12 +17,12 @@ import { useToast } from '@/hooks/use-toast'
 
 export default function SalesAnalysis() {
   const { toast } = useToast()
-  const [grupo, setGrupo] = useState('all')
+  const [selectedGrupos, setSelectedGrupos] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [periodo, setPeriodo] = useState<'total' | '2024' | '2025'>('total')
 
   const { data: salesData, isLoading, error } = useSalesData({
-    grupo: grupo !== 'all' ? grupo : undefined,
+    grupos: selectedGrupos.length > 0 ? selectedGrupos : undefined,
     searchQuery: searchQuery || undefined,
   })
   const { data: grupos } = useSalesGrupos()
@@ -91,14 +92,22 @@ export default function SalesAnalysis() {
     }
   }
 
+  const toggleGrupo = (g: string) => {
+    setSelectedGrupos(prev =>
+      prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]
+    )
+  }
+
+  const hasActiveFilters = selectedGrupos.length > 0 || searchQuery || periodo !== 'total'
+
   const handleClearFilters = () => {
-    setGrupo('all')
+    setSelectedGrupos([])
     setSearchQuery('')
     setPeriodo('total')
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -113,7 +122,7 @@ export default function SalesAnalysis() {
         </Button>
       </div>
 
-      {/* Filters */}
+      {/* Filters Row 1: Period + Search */}
       <div className="flex flex-col gap-3 sm:flex-row">
         <Select value={periodo} onValueChange={(v) => setPeriodo(v as 'total' | '2024' | '2025')}>
           <SelectTrigger className="w-full sm:w-[150px]">
@@ -123,18 +132,6 @@ export default function SalesAnalysis() {
             <SelectItem value="total">Total</SelectItem>
             <SelectItem value="2024">Solo 2024</SelectItem>
             <SelectItem value="2025">Solo 2025</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={grupo} onValueChange={setGrupo}>
-          <SelectTrigger className="w-full sm:w-[200px]">
-            <SelectValue placeholder="Grupo" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los grupos</SelectItem>
-            {grupos?.map((g) => (
-              <SelectItem key={g} value={g}>{g}</SelectItem>
-            ))}
           </SelectContent>
         </Select>
 
@@ -148,11 +145,33 @@ export default function SalesAnalysis() {
           />
         </div>
 
-        {(grupo !== 'all' || searchQuery || periodo !== 'total') && (
+        {hasActiveFilters && (
           <Button variant="ghost" onClick={handleClearFilters} className="shrink-0">
             Limpiar
           </Button>
         )}
+      </div>
+
+      {/* Filters Row 2: Group Chips */}
+      <div className="flex flex-wrap gap-1.5 items-center">
+        <span className="text-xs text-muted-foreground font-medium mr-1">Grupo:</span>
+        <Badge
+          variant={selectedGrupos.length === 0 ? 'default' : 'outline'}
+          className="cursor-pointer select-none"
+          onClick={() => setSelectedGrupos([])}
+        >
+          Todos
+        </Badge>
+        {grupos?.map((g) => (
+          <Badge
+            key={g}
+            variant={selectedGrupos.includes(g) ? 'default' : 'outline'}
+            className="cursor-pointer select-none"
+            onClick={() => toggleGrupo(g)}
+          >
+            {g}
+          </Badge>
+        ))}
       </div>
 
       {/* Summary Stats */}

@@ -3,23 +3,23 @@ import { supabase } from '@/lib/supabase'
 import type { SalesData } from '@/types'
 
 interface UseSalesDataOptions {
-  grupo?: string
+  grupos?: string[]
   searchQuery?: string
 }
 
 export function useSalesData(options: UseSalesDataOptions = {}) {
-  const { grupo, searchQuery } = options
+  const { grupos, searchQuery } = options
 
   return useQuery({
-    queryKey: ['sales_data', grupo, searchQuery],
+    queryKey: ['sales_data', grupos, searchQuery],
     queryFn: async () => {
       let query = supabase
         .from('sales_data')
         .select('*')
         .order('total', { ascending: false })
 
-      if (grupo && grupo !== 'all') {
-        query = query.eq('grupo', grupo)
+      if (grupos && grupos.length > 0) {
+        query = query.in('grupo', grupos)
       }
 
       if (searchQuery) {

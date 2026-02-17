@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Plus, Edit2, Loader2 } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Plus, Edit2, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -12,7 +12,6 @@ import type { LocationType } from '@/types'
 interface StockTableProps {
   location: LocationType
   searchQuery: string
-  categoryFilter: string
 }
 
 interface InventoryItem {
@@ -39,48 +38,115 @@ interface EditingProduct {
   min_stock_ml: number
 }
 
+type StockSortField = 'name' | 'category' | 'quantity_ml' | 'status'
+type SortDirection = 'asc' | 'desc'
+
+const getEstado = (product: EditingProduct): string => {
+  if (product.quantity_ml === 0) return 'Sin Stock'
+  if (product.min_stock_ml > 0 && product.quantity_ml < product.min_stock_ml) return 'Stock Bajo'
+  return 'OK'
+}
+
+const getStatusOrder = (product: EditingProduct): number => {
+  if (product.quantity_ml === 0) return 0
+  if (product.min_stock_ml > 0 && product.quantity_ml < product.min_stock_ml) return 1
+  return 2
+}
+
 export function StockTable({
   location,
   searchQuery,
-  categoryFilter,
 }: StockTableProps) {
   const { profile } = useAuth()
-  const { data: inventory, isLoading, error, isFetching } = useInventory(location)
+  const { data: inventory, isLoading, error } = useInventory(location)
   const [editingProduct, setEditingProduct] = useState<EditingProduct | null>(null)
-
-  console.log('[StockTable] Render:', { location, isLoading, isFetching, error, inventoryCount: inventory?.length })
+  const [sortField, setSortField] = useState<StockSortField>('name')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [selectedEstados, setSelectedEstados] = useState<string[]>([])
 
   const canEdit = profile?.role === 'admin' || profile?.role === 'bodeguero'
 
-  // Transform and filter products
-  const filteredProducts = (inventory || [])
-    .filter((item: InventoryItem) => {
-      const hasProduct = item.product !== null
-      if (!hasProduct) {
-        console.log('[StockTable] Item without product:', item)
-      }
-      return hasProduct
-    })
-    .map((item: InventoryItem) => ({
-      id: item.product!.id,
-      code: item.product!.code,
-      name: item.product!.name,
-      category: item.product!.category?.name || 'Sin categoría',
-      format_ml: item.product!.format_ml || 750,
-      quantity_ml: item.quantity_ml,
-      min_stock_ml: item.min_stock_ml || 0,
-    }))
-    .filter((product: EditingProduct) => {
+  // All products mapped from inventory
+  const allProducts = useMemo(() => {
+    return (inventory || [])
+      .filter((item: InventoryItem) => item.product !== null)
+      .map((item: InventoryItem) => ({
+        id: item.product!.id,
+        code: item.product!.code,
+        name: item.product!.name,
+        category: item.product!.category?.name || 'Sin categoria',
+        format_ml: item.product!.format_ml || 750,
+        quantity_ml: item.quantity_ml,
+        min_stock_ml: item.min_stock_ml || 0,
+      }))
+  }, [inventory])
+
+  // Unique categories from current data
+  const allCategories = useMemo(() => {
+    return [...new Set(allProducts.map((p: EditingProduct) => p.category))].sort()
+  }, [allProducts])
+
+  // Filter products
+  const filteredProducts = useMemo(() => {
+    return allProducts.filter((product: EditingProduct) => {
       const matchesSearch = product.name
         .toLowerCase()
         .includes(searchQuery.toLowerCase())
-      const matchesCategory =
-        categoryFilter === 'all' ||
-        product.category.toLowerCase() === categoryFilter.toLowerCase()
-      return matchesSearch && matchesCategory
+      const matchesCategory = selectedCategories.length === 0 ||
+        selectedCategories.includes(product.category)
+      const matchesEstado = selectedEstados.length === 0 ||
+        selectedEstados.includes(getEstado(product))
+      return matchesSearch && matchesCategory && matchesEstado
     })
+  }, [allProducts, searchQuery, selectedCategories, selectedEstados])
 
-  console.log('[StockTable] Filtered products:', filteredProducts.length)
+  // Sort products
+  const sortedProducts = useMemo(() => {
+    return [...filteredProducts].sort((a, b) => {
+      const modifier = sortDirection === 'asc' ? 1 : -1
+      switch (sortField) {
+        case 'name':
+          return a.name.localeCompare(b.name) * modifier
+        case 'category':
+          return a.category.localeCompare(b.category) * modifier
+        case 'quantity_ml':
+          return (a.quantity_ml - b.quantity_ml) * modifier
+        case 'status':
+          return (getStatusOrder(a) - getStatusOrder(b)) * modifier
+        default:
+          return 0
+      }
+    })
+  }, [filteredProducts, sortField, sortDirection])
+
+  const handleSort = (field: StockSortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection(field === 'name' || field === 'category' ? 'asc' : 'desc')
+    }
+  }
+
+  const SortIcon = ({ field }: { field: StockSortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="ml-1 h-3 w-3 opacity-40" />
+    return sortDirection === 'asc'
+      ? <ArrowUp className="ml-1 h-3 w-3" />
+      : <ArrowDown className="ml-1 h-3 w-3" />
+  }
+
+  const toggleCategory = (cat: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(cat) ? prev.filter(x => x !== cat) : [...prev, cat]
+    )
+  }
+
+  const toggleEstado = (estado: string) => {
+    setSelectedEstados(prev =>
+      prev.includes(estado) ? prev.filter(x => x !== estado) : [...prev, estado]
+    )
+  }
 
   const getBottles = (ml: number, formatMl: number) => {
     return (ml / formatMl).toFixed(1)
@@ -104,23 +170,102 @@ export function StockTable({
 
   return (
     <>
+      {/* Filter Chips */}
+      <div className="space-y-2 mb-3">
+        {/* Category chips */}
+        <div className="flex flex-wrap gap-1.5 items-center">
+          <span className="text-xs text-muted-foreground font-medium mr-1">Categoria:</span>
+          <Badge
+            variant={selectedCategories.length === 0 ? 'default' : 'outline'}
+            className="cursor-pointer select-none text-xs"
+            onClick={() => setSelectedCategories([])}
+          >
+            Todas
+          </Badge>
+          {allCategories.map((cat) => (
+            <Badge
+              key={cat}
+              variant={selectedCategories.includes(cat) ? 'default' : 'outline'}
+              className="cursor-pointer select-none text-xs"
+              onClick={() => toggleCategory(cat)}
+            >
+              {cat}
+            </Badge>
+          ))}
+        </div>
+
+        {/* Estado chips */}
+        <div className="flex flex-wrap gap-1.5 items-center">
+          <span className="text-xs text-muted-foreground font-medium mr-1">Estado:</span>
+          <Badge
+            variant={selectedEstados.length === 0 ? 'default' : 'outline'}
+            className="cursor-pointer select-none text-xs"
+            onClick={() => setSelectedEstados([])}
+          >
+            Todos
+          </Badge>
+          {['OK', 'Stock Bajo', 'Sin Stock'].map((estado) => (
+            <Badge
+              key={estado}
+              variant={selectedEstados.includes(estado) ? 'default' : 'outline'}
+              className="cursor-pointer select-none text-xs"
+              onClick={() => toggleEstado(estado)}
+            >
+              {estado}
+            </Badge>
+          ))}
+        </div>
+      </div>
+
       {/* Desktop Table */}
       <div className="hidden md:block">
         <div className="rounded-md border">
           <table className="w-full">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left text-sm font-medium">Producto</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">Categoria</th>
-                <th className="px-4 py-3 text-right text-sm font-medium">Stock</th>
-                <th className="px-4 py-3 text-center text-sm font-medium">Estado</th>
-                <th className="px-4 py-3 text-right text-sm font-medium">Acciones</th>
+                <th
+                  className="px-2 py-2 text-left text-sm font-medium cursor-pointer hover:text-foreground"
+                  onClick={() => handleSort('name')}
+                >
+                  <span className="inline-flex items-center">
+                    Producto
+                    <SortIcon field="name" />
+                  </span>
+                </th>
+                <th
+                  className="px-2 py-2 text-left text-sm font-medium cursor-pointer hover:text-foreground"
+                  onClick={() => handleSort('category')}
+                >
+                  <span className="inline-flex items-center">
+                    Categoria
+                    <SortIcon field="category" />
+                  </span>
+                </th>
+                <th
+                  className="px-2 py-2 text-right text-sm font-medium cursor-pointer hover:text-foreground"
+                  onClick={() => handleSort('quantity_ml')}
+                >
+                  <span className="inline-flex items-center justify-end">
+                    Stock
+                    <SortIcon field="quantity_ml" />
+                  </span>
+                </th>
+                <th
+                  className="px-2 py-2 text-center text-sm font-medium cursor-pointer hover:text-foreground"
+                  onClick={() => handleSort('status')}
+                >
+                  <span className="inline-flex items-center">
+                    Estado
+                    <SortIcon field="status" />
+                  </span>
+                </th>
+                <th className="px-2 py-2 text-right text-sm font-medium">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {filteredProducts.map((product: EditingProduct) => (
-                <tr key={product.id} className="border-b">
-                  <td className="px-4 py-3">
+              {sortedProducts.map((product: EditingProduct) => (
+                <tr key={product.id} className="border-b hover:bg-muted/30">
+                  <td className="px-2 py-2">
                     <div>
                       <p className="font-medium">{product.name}</p>
                       <p className="text-sm text-muted-foreground">
@@ -128,10 +273,10 @@ export function StockTable({
                       </p>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-2 py-2 whitespace-nowrap">
                     <Badge variant="outline">{product.category}</Badge>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-2 py-2 text-right">
                     <div>
                       <p className="font-medium">
                         {getBottles(product.quantity_ml, product.format_ml)} bot.
@@ -141,14 +286,14 @@ export function StockTable({
                       </p>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-2 py-2 text-center">
                     <StockIndicator
                       current={product.quantity_ml}
                       minimum={product.min_stock_ml}
                     />
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-2">
+                  <td className="px-2 py-2 text-right">
+                    <div className="flex justify-end gap-1">
                       <Button size="sm" variant="outline">
                         <Plus className="mr-1 h-3 w-3" />
                         Pedir
@@ -173,7 +318,7 @@ export function StockTable({
 
       {/* Mobile Cards */}
       <div className="grid gap-3 md:hidden">
-        {filteredProducts.map((product: EditingProduct) => (
+        {sortedProducts.map((product: EditingProduct) => (
           <Card key={product.id}>
             <CardContent className="p-4">
               <div className="flex items-start justify-between">
@@ -221,7 +366,7 @@ export function StockTable({
         ))}
       </div>
 
-      {filteredProducts.length === 0 && (
+      {sortedProducts.length === 0 && (
         <div className="py-8 text-center text-muted-foreground">
           No se encontraron productos
         </div>

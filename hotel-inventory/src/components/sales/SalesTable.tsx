@@ -89,9 +89,9 @@ export function SalesTable({ data, isLoading, error, periodo }: SalesTableProps)
           <table className="w-full">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left text-sm font-medium w-10">#</th>
+                <th className="px-2 py-2 text-left text-sm font-medium w-10">#</th>
                 <th
-                  className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:text-foreground"
+                  className="px-2 py-2 text-left text-sm font-medium cursor-pointer hover:text-foreground"
                   onClick={() => handleSort('receta')}
                 >
                   <span className="inline-flex items-center">
@@ -100,7 +100,7 @@ export function SalesTable({ data, isLoading, error, periodo }: SalesTableProps)
                   </span>
                 </th>
                 <th
-                  className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:text-foreground"
+                  className="px-2 py-2 text-left text-sm font-medium cursor-pointer hover:text-foreground"
                   onClick={() => handleSort('grupo')}
                 >
                   <span className="inline-flex items-center">
@@ -111,7 +111,7 @@ export function SalesTable({ data, isLoading, error, periodo }: SalesTableProps)
                 {periodo === 'total' && (
                   <>
                     <th
-                      className="px-4 py-3 text-right text-sm font-medium cursor-pointer hover:text-foreground"
+                      className="px-2 py-2 text-right text-sm font-medium cursor-pointer hover:text-foreground"
                       onClick={() => handleSort('cantidad_2024')}
                     >
                       <span className="inline-flex items-center justify-end">
@@ -120,7 +120,7 @@ export function SalesTable({ data, isLoading, error, periodo }: SalesTableProps)
                       </span>
                     </th>
                     <th
-                      className="px-4 py-3 text-right text-sm font-medium cursor-pointer hover:text-foreground"
+                      className="px-2 py-2 text-right text-sm font-medium cursor-pointer hover:text-foreground"
                       onClick={() => handleSort('cantidad_2025')}
                     >
                       <span className="inline-flex items-center justify-end">
@@ -131,7 +131,7 @@ export function SalesTable({ data, isLoading, error, periodo }: SalesTableProps)
                   </>
                 )}
                 <th
-                  className="px-4 py-3 text-right text-sm font-medium cursor-pointer hover:text-foreground"
+                  className="px-2 py-2 text-right text-sm font-medium cursor-pointer hover:text-foreground"
                   onClick={() => handleSort('total')}
                 >
                   <span className="inline-flex items-center justify-end">
@@ -140,7 +140,7 @@ export function SalesTable({ data, isLoading, error, periodo }: SalesTableProps)
                   </span>
                 </th>
                 <th
-                  className="px-4 py-3 text-right text-sm font-medium cursor-pointer hover:text-foreground"
+                  className="px-2 py-2 text-right text-sm font-medium cursor-pointer hover:text-foreground"
                   onClick={() => handleSort('daily_avg')}
                 >
                   <span className="inline-flex items-center justify-end">
@@ -153,30 +153,30 @@ export function SalesTable({ data, isLoading, error, periodo }: SalesTableProps)
             <tbody>
               {sortedData.map((item, index) => (
                 <tr key={item.id} className="border-b hover:bg-muted/30">
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{index + 1}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-2 py-2 text-sm text-muted-foreground">{index + 1}</td>
+                  <td className="px-2 py-2">
                     <p className="font-medium">{item.receta}</p>
                     {item.familia && (
                       <p className="text-xs text-muted-foreground">{item.familia}</p>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-2 py-2">
                     <Badge variant="outline">{item.grupo}</Badge>
                   </td>
                   {periodo === 'total' && (
                     <>
-                      <td className="px-4 py-3 text-right tabular-nums">
+                      <td className="px-2 py-2 text-right tabular-nums">
                         {formatNumber(item.cantidad_2024)}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
+                      <td className="px-2 py-2 text-right tabular-nums">
                         {formatNumber(item.cantidad_2025)}
                       </td>
                     </>
                   )}
-                  <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                  <td className="px-2 py-2 text-right font-semibold tabular-nums">
                     {formatNumber(getCantidad(item))}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                  <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">
                     {item.daily_avg.toFixed(2)}
                   </td>
                 </tr>

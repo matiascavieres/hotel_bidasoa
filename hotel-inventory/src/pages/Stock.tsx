@@ -11,10 +11,6 @@ export default function Stock() {
     profile?.location || 'bodega'
   )
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<string>('all')
-
-  console.log('[Stock] Profile:', profile)
-  console.log('[Stock] Selected location:', selectedLocation)
 
   const canViewAllLocations = profile?.role === 'admin' || profile?.role === 'bodeguero'
 
@@ -23,9 +19,6 @@ export default function Stock() {
     : profile?.location
     ? [profile.location]
     : []
-
-  console.log('[Stock] Can view all locations:', canViewAllLocations)
-  console.log('[Stock] Locations:', locations)
 
   return (
     <div className="space-y-6">
@@ -36,12 +29,10 @@ export default function Stock() {
         </p>
       </div>
 
-      {/* Search and filters */}
+      {/* Search */}
       <ProductSearch
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
       />
 
       {/* Location tabs */}
@@ -62,7 +53,6 @@ export default function Stock() {
               <StockTable
                 location={location}
                 searchQuery={searchQuery}
-                categoryFilter={selectedCategory}
               />
             </TabsContent>
           ))}
@@ -71,7 +61,6 @@ export default function Stock() {
         <StockTable
           location={selectedLocation}
           searchQuery={searchQuery}
-          categoryFilter={selectedCategory}
         />
       )}
     </div>
