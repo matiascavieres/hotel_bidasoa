@@ -19,7 +19,7 @@ interface NavItem {
 const mobileNavItems: NavItem[] = [
   {
     label: 'Inicio',
-    href: '/',
+    href: '/dashboard',
     icon: LayoutDashboard,
   },
   {

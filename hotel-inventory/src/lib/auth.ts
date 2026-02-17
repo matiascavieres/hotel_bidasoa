@@ -105,12 +105,12 @@ export function canManageProducts(role: UserRole): boolean {
 export function getDefaultRoute(role: UserRole): string {
   switch (role) {
     case 'admin':
-      return '/'
+      return '/dashboard'
     case 'bodeguero':
-      return '/'
+      return '/dashboard'
     case 'bartender':
       return '/stock'
     default:
-      return '/'
+      return '/dashboard'
   }
 }

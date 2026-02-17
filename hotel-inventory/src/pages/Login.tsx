@@ -61,7 +61,7 @@ export default function Login() {
     }
 
     // Navigate to default route based on role
-    const defaultRoute = profile?.role ? getDefaultRoute(profile.role) : '/'
+    const defaultRoute = profile?.role ? getDefaultRoute(profile.role) : '/dashboard'
     navigate(defaultRoute)
   }
 

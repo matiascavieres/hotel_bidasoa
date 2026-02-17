@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
 import { Toaster } from '@/components/ui/toaster'
 import { Layout } from '@/components/layout/Layout'
+import LandingPage from '@/pages/LandingPage'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import Stock from '@/pages/Stock'
@@ -50,7 +51,7 @@ function ProtectedRoute({
   }
 
   if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/dashboard" replace />
   }
 
   return <>{children}</>
@@ -69,16 +70,38 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (user) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/dashboard" replace />
   }
 
   return <>{children}</>
 }
 
+// Landing route: shows landing for non-auth, redirects to dashboard for auth
+function LandingRoute() {
+  const { user, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (user) {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  return <LandingPage />
+}
+
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public routes */}
+      {/* Landing page (public) */}
+      <Route path="/" element={<LandingRoute />} />
+
+      {/* Login */}
       <Route
         path="/login"
         element={
@@ -96,7 +119,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/stock" element={<Stock />} />
         <Route path="/solicitudes" element={<Requests />} />
         <Route path="/solicitudes/nueva" element={<NewRequest />} />
@@ -155,7 +178,7 @@ function AppRoutes() {
       </Route>
 
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )
 }

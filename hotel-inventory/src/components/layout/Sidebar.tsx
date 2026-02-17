@@ -30,7 +30,7 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   {
     label: 'Dashboard',
-    href: '/',
+    href: '/dashboard',
     icon: LayoutDashboard,
   },
   {
