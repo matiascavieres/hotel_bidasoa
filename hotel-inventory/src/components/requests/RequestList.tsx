@@ -15,14 +15,18 @@ import {
 
 interface RequestListProps {
   statusFilter: RequestStatus | 'all'
+  locationFilter?: LocationType | 'all'
 }
 
-export function RequestList({ statusFilter }: RequestListProps) {
+export function RequestList({ statusFilter, locationFilter }: RequestListProps) {
   const { profile, user } = useAuth()
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null)
 
   // Fetch requests from database
-  const { data: requests, isLoading, error } = useRequests(statusFilter)
+  const { data: requests, isLoading, error } = useRequests(
+    statusFilter,
+    locationFilter && locationFilter !== 'all' ? locationFilter : undefined
+  )
 
   const isBodeguero = profile?.role === 'bodeguero' || profile?.role === 'admin'
 

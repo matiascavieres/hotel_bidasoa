@@ -4,12 +4,20 @@ import { Plus } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { RequestList } from '@/components/requests/RequestList'
-import type { RequestStatus } from '@/types'
+import type { RequestStatus, LocationType } from '@/types'
 
 export default function Requests() {
   const { profile } = useAuth()
   const [statusFilter, setStatusFilter] = useState<RequestStatus | 'all'>('all')
+  const [locationFilter, setLocationFilter] = useState<LocationType | 'all'>('all')
 
   const isBodeguero = profile?.role === 'bodeguero' || profile?.role === 'admin'
 
@@ -24,12 +32,29 @@ export default function Requests() {
               : 'Tus solicitudes de productos'}
           </p>
         </div>
-        <Link to="/solicitudes/nueva">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Nueva Solicitud
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          {isBodeguero && (
+            <Select
+              value={locationFilter}
+              onValueChange={(v) => setLocationFilter(v as LocationType | 'all')}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Todas las ubicaciones" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las ubicaciones</SelectItem>
+                <SelectItem value="bar_casa_sanz">Bar Casa Sanz</SelectItem>
+                <SelectItem value="bar_hotel_bidasoa">Bar Hotel Bidasoa</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+          <Link to="/solicitudes/nueva">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Nueva Solicitud
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <Tabs
@@ -45,7 +70,10 @@ export default function Requests() {
         </TabsList>
 
         <TabsContent value={statusFilter} className="mt-4">
-          <RequestList statusFilter={statusFilter} />
+          <RequestList
+            statusFilter={statusFilter}
+            locationFilter={isBodeguero ? locationFilter : undefined}
+          />
         </TabsContent>
       </Tabs>
     </div>

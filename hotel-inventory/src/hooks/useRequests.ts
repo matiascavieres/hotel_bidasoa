@@ -41,9 +41,9 @@ async function createAuditLog({
   }
 }
 
-export function useRequests(statusFilter?: RequestStatus | 'all') {
+export function useRequests(statusFilter?: RequestStatus | 'all', locationFilter?: LocationType) {
   return useQuery({
-    queryKey: ['requests', statusFilter],
+    queryKey: ['requests', statusFilter, locationFilter],
     queryFn: async () => {
       let query = supabase
         .from('requests')
@@ -61,6 +61,10 @@ export function useRequests(statusFilter?: RequestStatus | 'all') {
 
       if (statusFilter && statusFilter !== 'all') {
         query = query.eq('status', statusFilter)
+      }
+
+      if (locationFilter) {
+        query = query.eq('location', locationFilter)
       }
 
       const { data, error } = await query
