@@ -199,7 +199,7 @@ export function RequestDetail({ requestId, open, onClose }: RequestDetailProps) 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md flex flex-col max-h-[90vh]">
+      <DialogContent className="max-w-md flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 flex-wrap">
             {formatRequestTitle(request.created_at, requesterName, request.location)}
@@ -220,7 +220,7 @@ export function RequestDetail({ requestId, open, onClose }: RequestDetailProps) 
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+        <div className="overflow-y-auto space-y-4 pr-1 max-h-[55vh]">
           {request.notes && (
             <div className="rounded-md bg-muted p-3">
               <p className="text-sm">{request.notes}</p>
