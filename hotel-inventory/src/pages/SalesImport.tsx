@@ -10,7 +10,7 @@ import { parseSalesFile, groupSalesByRecipe } from '@/lib/salesParser'
 import { useRecipes } from '@/hooks/useRecipes'
 import { useSalesImports, matchSalesWithRecipes, useProcessSalesImport } from '@/hooks/useSalesImport'
 import { SalesImportPreview } from '@/components/recipes/SalesImportPreview'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuth } from '@/context/AuthContext'
 import type { SalesImportPreview as Preview } from '@/hooks/useSalesImport'
 
 type ImportStep = 'upload' | 'preview' | 'done'

@@ -18,7 +18,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useProducts } from '@/hooks/useProducts'
-import type { ParsedIngredientLine } from '@/lib/recipeParser'
 
 export interface IngredientMapping {
   ingredientName: string
@@ -34,7 +33,6 @@ interface UniqueIngredient {
   exampleQuantityMl: number
   unit: string
   isLiquid: boolean
-  raw: string
 }
 
 interface RecipeIngredientMapperProps {
