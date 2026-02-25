@@ -249,14 +249,14 @@ function IngredientRow({ ingredient, mapping, products, onChange, defaultSkip = 
         {!isSkipped && (
           <div className="w-full sm:w-56 shrink-0">
             <Select
-              value={productId || ''}
-              onValueChange={(v) => onChange({ productId: v || null })}
+              value={productId || '__none__'}
+              onValueChange={(v) => onChange({ productId: v === '__none__' ? null : v })}
             >
               <SelectTrigger className="h-8 text-sm">
                 <SelectValue placeholder="Seleccionar producto..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">-- Sin asignar --</SelectItem>
+                <SelectItem value="__none__">-- Sin asignar --</SelectItem>
                 {products.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.name}
