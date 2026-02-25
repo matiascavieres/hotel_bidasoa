@@ -23,6 +23,7 @@ export type LogAction =
   | 'product_updated'
   | 'user_created'
   | 'user_updated'
+  | 'inbound_received'
 
 // Unit types for display
 export type UnitType = 'ml' | 'bottles' | 'units'
@@ -34,6 +35,16 @@ export interface User {
   full_name: string
   role: UserRole
   location: LocationType | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+// Supplier (proveedor)
+export interface Supplier {
+  id: string
+  name: string
+  email: string
   is_active: boolean
   created_at: string
   updated_at: string
@@ -57,10 +68,12 @@ export interface Product {
   format_ml: number | null
   sale_price: number | null
   is_active: boolean
+  supplier_id: string | null
   created_at: string
   updated_at: string
   // Joined fields
   category?: Category
+  supplier?: Supplier
 }
 
 // Inventory
@@ -172,6 +185,33 @@ export interface CartItem {
   quantity: number
   unit_type: UnitType
   notes?: string
+}
+
+// Inbound (ingreso de proveedor)
+export interface Inbound {
+  id: string
+  created_by: string
+  invoice_number: string | null
+  notes: string | null
+  image_urls: string[]
+  received_at: string
+  created_at: string
+  updated_at: string
+  // Joined fields
+  creator?: User
+  items?: InboundItem[]
+}
+
+// Inbound Item
+export interface InboundItem {
+  id: string
+  inbound_id: string
+  product_id: string
+  quantity_received: number
+  unit_type: UnitType
+  created_at: string
+  // Joined fields
+  product?: Product
 }
 
 // Stock summary for dashboard

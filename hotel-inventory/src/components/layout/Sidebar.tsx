@@ -10,6 +10,7 @@ import {
   Settings,
   BookOpen,
   Bell,
+  PackagePlus,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
@@ -47,6 +48,12 @@ const mainNavItems: NavItem[] = [
     label: 'Traspasos',
     href: '/traspasos',
     icon: ArrowLeftRight,
+    roles: ['admin', 'bodeguero'],
+  },
+  {
+    label: 'Inbound',
+    href: '/inbound',
+    icon: PackagePlus,
     roles: ['admin', 'bodeguero'],
   },
   {

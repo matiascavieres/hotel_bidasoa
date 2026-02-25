@@ -9,7 +9,8 @@ export function useProducts() {
         .from('products')
         .select(`
           *,
-          category:categories(*)
+          category:categories(*),
+          supplier:suppliers(*)
         `)
         .eq('is_active', true)
         .order('name')
