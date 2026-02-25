@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Plus, Edit2, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { Plus, Edit2, Loader2, ArrowUpDown, ArrowUp, ArrowDown, LayoutList, LayoutGrid } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -41,6 +41,7 @@ interface EditingProduct {
 
 type StockSortField = 'name' | 'category' | 'quantity_ml' | 'status'
 type SortDirection = 'asc' | 'desc'
+type ViewMode = 'list' | 'grid'
 
 const getEstado = (product: EditingProduct): string => {
   if (product.quantity_ml === 0) return 'Sin Stock'
@@ -68,8 +69,16 @@ export function StockTable({
   const [selectedEstados, setSelectedEstados] = useState<string[]>(
     () => initialStatus ? [initialStatus] : []
   )
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    return (localStorage.getItem('stock-view-mode') as ViewMode) || 'list'
+  })
 
   const canEdit = profile?.role === 'admin' || profile?.role === 'bodeguero'
+
+  const handleViewMode = (mode: ViewMode) => {
+    setViewMode(mode)
+    localStorage.setItem('stock-view-mode', mode)
+  }
 
   // All products mapped from inventory
   const allProducts = useMemo(() => {
@@ -174,137 +183,216 @@ export function StockTable({
 
   return (
     <>
-      {/* Filter Chips */}
-      <div className="space-y-2 mb-3">
-        {/* Category chips */}
-        <div className="flex flex-wrap gap-1.5 items-center">
-          <span className="text-xs text-muted-foreground font-medium mr-1">Categoria:</span>
-          <Badge
-            variant={selectedCategories.length === 0 ? 'default' : 'outline'}
-            className="cursor-pointer select-none text-xs"
-            onClick={() => setSelectedCategories([])}
-          >
-            Todas
-          </Badge>
-          {allCategories.map((cat) => (
+      {/* Filter Chips + View Toggle */}
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <div className="space-y-2 flex-1 min-w-0">
+          {/* Category chips */}
+          <div className="flex flex-wrap gap-1.5 items-center">
+            <span className="text-xs text-muted-foreground font-medium mr-1">Categoria:</span>
             <Badge
-              key={cat}
-              variant={selectedCategories.includes(cat) ? 'default' : 'outline'}
+              variant={selectedCategories.length === 0 ? 'default' : 'outline'}
               className="cursor-pointer select-none text-xs"
-              onClick={() => toggleCategory(cat)}
+              onClick={() => setSelectedCategories([])}
             >
-              {cat}
+              Todas
             </Badge>
-          ))}
+            {allCategories.map((cat) => (
+              <Badge
+                key={cat}
+                variant={selectedCategories.includes(cat) ? 'default' : 'outline'}
+                className="cursor-pointer select-none text-xs"
+                onClick={() => toggleCategory(cat)}
+              >
+                {cat}
+              </Badge>
+            ))}
+          </div>
+
+          {/* Estado chips */}
+          <div className="flex flex-wrap gap-1.5 items-center">
+            <span className="text-xs text-muted-foreground font-medium mr-1">Estado:</span>
+            <Badge
+              variant={selectedEstados.length === 0 ? 'default' : 'outline'}
+              className="cursor-pointer select-none text-xs"
+              onClick={() => setSelectedEstados([])}
+            >
+              Todos
+            </Badge>
+            {['OK', 'Stock Bajo', 'Sin Stock'].map((estado) => (
+              <Badge
+                key={estado}
+                variant={selectedEstados.includes(estado) ? 'default' : 'outline'}
+                className="cursor-pointer select-none text-xs"
+                onClick={() => toggleEstado(estado)}
+              >
+                {estado}
+              </Badge>
+            ))}
+          </div>
         </div>
 
-        {/* Estado chips */}
-        <div className="flex flex-wrap gap-1.5 items-center">
-          <span className="text-xs text-muted-foreground font-medium mr-1">Estado:</span>
-          <Badge
-            variant={selectedEstados.length === 0 ? 'default' : 'outline'}
-            className="cursor-pointer select-none text-xs"
-            onClick={() => setSelectedEstados([])}
+        {/* View toggle */}
+        <div className="flex items-center gap-1 shrink-0 pt-0.5">
+          <Button
+            variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => handleViewMode('list')}
+            title="Vista lista"
           >
-            Todos
-          </Badge>
-          {['OK', 'Stock Bajo', 'Sin Stock'].map((estado) => (
-            <Badge
-              key={estado}
-              variant={selectedEstados.includes(estado) ? 'default' : 'outline'}
-              className="cursor-pointer select-none text-xs"
-              onClick={() => toggleEstado(estado)}
-            >
-              {estado}
-            </Badge>
-          ))}
+            <LayoutList className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => handleViewMode('grid')}
+            title="Vista cuadrícula"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
-      {/* Desktop Table */}
-      <div className="hidden md:block">
-        <div className="rounded-md border">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col className="w-[35%]" />
-              <col className="w-[15%]" />
-              <col className="w-[15%]" />
-              <col className="w-[15%]" />
-              <col className="w-[20%]" />
-            </colgroup>
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th
-                  className="px-2 py-2 text-left text-sm font-medium cursor-pointer hover:text-foreground"
-                  onClick={() => handleSort('name')}
-                >
-                  <span className="inline-flex items-center">
-                    Producto
-                    <SortIcon field="name" />
-                  </span>
-                </th>
-                <th
-                  className="px-2 py-2 text-left text-sm font-medium cursor-pointer hover:text-foreground"
-                  onClick={() => handleSort('category')}
-                >
-                  <span className="inline-flex items-center">
-                    Categoria
-                    <SortIcon field="category" />
-                  </span>
-                </th>
-                <th
-                  className="px-2 py-2 text-right text-sm font-medium cursor-pointer hover:text-foreground"
-                  onClick={() => handleSort('quantity_ml')}
-                >
-                  <span className="inline-flex items-center justify-end">
-                    Stock
-                    <SortIcon field="quantity_ml" />
-                  </span>
-                </th>
-                <th
-                  className="px-2 py-2 text-center text-sm font-medium cursor-pointer hover:text-foreground"
-                  onClick={() => handleSort('status')}
-                >
-                  <span className="inline-flex items-center">
-                    Estado
-                    <SortIcon field="status" />
-                  </span>
-                </th>
-                <th className="px-2 py-2 text-right text-sm font-medium">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedProducts.map((product: EditingProduct) => (
-                <tr key={product.id} className="border-b hover:bg-muted/30">
-                  <td className="px-2 py-2">
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{product.name}</p>
-                      <p className="text-sm text-muted-foreground truncate">
+      {/* List view: table (desktop) + cards (mobile) */}
+      {viewMode === 'list' && (
+        <>
+          {/* Desktop Table */}
+          <div className="hidden md:block">
+            <div className="rounded-md border">
+              <table className="w-full table-fixed">
+                <colgroup>
+                  <col className="w-[35%]" />
+                  <col className="w-[15%]" />
+                  <col className="w-[15%]" />
+                  <col className="w-[15%]" />
+                  <col className="w-[20%]" />
+                </colgroup>
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th
+                      className="px-2 py-2 text-left text-sm font-medium cursor-pointer hover:text-foreground"
+                      onClick={() => handleSort('name')}
+                    >
+                      <span className="inline-flex items-center">
+                        Producto
+                        <SortIcon field="name" />
+                      </span>
+                    </th>
+                    <th
+                      className="px-2 py-2 text-left text-sm font-medium cursor-pointer hover:text-foreground"
+                      onClick={() => handleSort('category')}
+                    >
+                      <span className="inline-flex items-center">
+                        Categoria
+                        <SortIcon field="category" />
+                      </span>
+                    </th>
+                    <th
+                      className="px-2 py-2 text-right text-sm font-medium cursor-pointer hover:text-foreground"
+                      onClick={() => handleSort('quantity_ml')}
+                    >
+                      <span className="inline-flex items-center justify-end">
+                        Stock
+                        <SortIcon field="quantity_ml" />
+                      </span>
+                    </th>
+                    <th
+                      className="px-2 py-2 text-center text-sm font-medium cursor-pointer hover:text-foreground"
+                      onClick={() => handleSort('status')}
+                    >
+                      <span className="inline-flex items-center">
+                        Estado
+                        <SortIcon field="status" />
+                      </span>
+                    </th>
+                    <th className="px-2 py-2 text-right text-sm font-medium">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedProducts.map((product: EditingProduct) => (
+                    <tr key={product.id} className="border-b hover:bg-muted/30">
+                      <td className="px-2 py-2">
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{product.name}</p>
+                          <p className="text-sm text-muted-foreground truncate">
+                            {product.code} • {product.format_ml}ml
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-2 py-2 whitespace-nowrap">
+                        <Badge variant="outline">{product.category}</Badge>
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        <div>
+                          <p className="font-medium">
+                            {getBottles(product.quantity_ml, product.format_ml)} bot.
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {product.quantity_ml} ml
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-2 py-2 text-center">
+                        <StockIndicator
+                          current={product.quantity_ml}
+                          minimum={product.min_stock_ml}
+                        />
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button size="sm" variant="outline">
+                            <Plus className="mr-1 h-3 w-3" />
+                            Pedir
+                          </Button>
+                          {canEdit && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setEditingProduct(product)}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="grid gap-3 md:hidden">
+            {sortedProducts.map((product: EditingProduct) => (
+              <Card key={product.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <p className="font-medium">{product.name}</p>
+                      <p className="text-sm text-muted-foreground">
                         {product.code} • {product.format_ml}ml
                       </p>
+                      <Badge variant="outline" className="mt-1">
+                        {product.category}
+                      </Badge>
                     </div>
-                  </td>
-                  <td className="px-2 py-2 whitespace-nowrap">
-                    <Badge variant="outline">{product.category}</Badge>
-                  </td>
-                  <td className="px-2 py-2 text-right">
+                    <StockIndicator
+                      current={product.quantity_ml}
+                      minimum={product.min_stock_ml}
+                    />
+                  </div>
+                  <div className="mt-3 flex items-center justify-between">
                     <div>
-                      <p className="font-medium">
+                      <p className="text-lg font-bold">
                         {getBottles(product.quantity_ml, product.format_ml)} bot.
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {product.quantity_ml} ml
                       </p>
                     </div>
-                  </td>
-                  <td className="px-2 py-2 text-center">
-                    <StockIndicator
-                      current={product.quantity_ml}
-                      minimum={product.min_stock_ml}
-                    />
-                  </td>
-                  <td className="px-2 py-2 text-right">
-                    <div className="flex justify-end gap-1">
+                    <div className="flex gap-2">
                       <Button size="sm" variant="outline">
                         <Plus className="mr-1 h-3 w-3" />
                         Pedir
@@ -319,45 +407,48 @@ export function StockTable({
                         </Button>
                       )}
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
 
-      {/* Mobile Cards */}
-      <div className="grid gap-3 md:hidden">
-        {sortedProducts.map((product: EditingProduct) => (
-          <Card key={product.id}>
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <p className="font-medium">{product.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {product.code} • {product.format_ml}ml
+      {/* Grid view */}
+      {viewMode === 'grid' && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {sortedProducts.map((product: EditingProduct) => (
+            <Card key={product.id} className="flex flex-col">
+              <CardContent className="p-3 flex flex-col gap-2 h-full">
+                {/* Name + status */}
+                <div className="flex items-start justify-between gap-1">
+                  <p className="font-medium text-sm leading-tight line-clamp-2 flex-1">
+                    {product.name}
                   </p>
-                  <Badge variant="outline" className="mt-1">
-                    {product.category}
-                  </Badge>
+                  <StockIndicator
+                    current={product.quantity_ml}
+                    minimum={product.min_stock_ml}
+                  />
                 </div>
-                <StockIndicator
-                  current={product.quantity_ml}
-                  minimum={product.min_stock_ml}
-                />
-              </div>
-              <div className="mt-3 flex items-center justify-between">
-                <div>
-                  <p className="text-lg font-bold">
+                {/* Code · format */}
+                <p className="text-xs text-muted-foreground">
+                  {product.code} · {product.format_ml}ml
+                </p>
+                {/* Category */}
+                <Badge variant="outline" className="text-xs w-fit">
+                  {product.category}
+                </Badge>
+                {/* Stock quantity */}
+                <div className="mt-auto pt-2 border-t">
+                  <p className="text-base font-bold leading-none">
                     {getBottles(product.quantity_ml, product.format_ml)} bot.
                   </p>
-                  <p className="text-sm text-muted-foreground">
-                    {product.quantity_ml} ml
-                  </p>
+                  <p className="text-xs text-muted-foreground">{product.quantity_ml} ml</p>
                 </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline">
+                {/* Actions */}
+                <div className="flex gap-1">
+                  <Button size="sm" variant="outline" className="flex-1 h-7 text-xs">
                     <Plus className="mr-1 h-3 w-3" />
                     Pedir
                   </Button>
@@ -365,17 +456,18 @@ export function StockTable({
                     <Button
                       size="sm"
                       variant="ghost"
+                      className="h-7 w-7 p-0"
                       onClick={() => setEditingProduct(product)}
                     >
-                      <Edit2 className="h-4 w-4" />
+                      <Edit2 className="h-3.5 w-3.5" />
                     </Button>
                   )}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {sortedProducts.length === 0 && (
         <div className="py-8 text-center text-muted-foreground">
