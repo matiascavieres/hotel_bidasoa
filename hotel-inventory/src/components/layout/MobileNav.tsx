@@ -3,7 +3,7 @@ import {
   LayoutDashboard,
   Package,
   ClipboardList,
-  ArrowLeftRight,
+  PackagePlus,
   Menu,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -33,9 +33,9 @@ const mobileNavItems: NavItem[] = [
     icon: ClipboardList,
   },
   {
-    label: 'Traspasos',
-    href: '/traspasos',
-    icon: ArrowLeftRight,
+    label: 'Inbound',
+    href: '/inbound',
+    icon: PackagePlus,
     roles: ['admin', 'bodeguero'],
   },
   {

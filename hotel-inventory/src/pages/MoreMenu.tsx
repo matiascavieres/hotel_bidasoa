@@ -8,6 +8,8 @@ import {
   Settings,
   LogOut,
   ChevronRight,
+  PackagePlus,
+  ArrowLeftRight,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -20,6 +22,18 @@ export default function MoreMenu() {
   const isAdmin = profile?.role === 'admin'
 
   const menuItems = [
+    {
+      label: 'Inbound',
+      href: '/inbound',
+      icon: PackagePlus,
+      show: isAdmin || profile?.role === 'bodeguero',
+    },
+    {
+      label: 'Traspasos',
+      href: '/traspasos',
+      icon: ArrowLeftRight,
+      show: isAdmin || profile?.role === 'bodeguero',
+    },
     {
       label: 'Historial',
       href: '/historial',
