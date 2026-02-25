@@ -16,9 +16,11 @@ import AdminUsers from '@/pages/admin/Users'
 import AdminCatalog from '@/pages/admin/Catalog'
 import AdminAlerts from '@/pages/admin/Alerts'
 import SalesAnalysis from '@/pages/SalesAnalysis'
+import SalesImport from '@/pages/SalesImport'
 import MoreMenu from '@/pages/MoreMenu'
 import Inbound from '@/pages/Inbound'
 import NewInbound from '@/pages/NewInbound'
+import AdminRecipes from '@/pages/admin/Recipes'
 import type { UserRole } from '@/types'
 
 const queryClient = new QueryClient({
@@ -190,6 +192,22 @@ function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <AdminAlerts />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/recetas"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminRecipes />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ventas/importar"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'bodeguero']}>
+              <SalesImport />
             </ProtectedRoute>
           }
         />

@@ -10,6 +10,8 @@ import {
   ChevronRight,
   PackagePlus,
   ArrowLeftRight,
+  Download,
+  UtensilsCrossed,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -47,6 +49,12 @@ export default function MoreMenu() {
       show: isAdmin || profile?.role === 'bodeguero',
     },
     {
+      label: 'Importar Ventas',
+      href: '/ventas/importar',
+      icon: Download,
+      show: isAdmin || profile?.role === 'bodeguero',
+    },
+    {
       label: 'Usuarios',
       href: '/admin/usuarios',
       icon: Users,
@@ -56,6 +64,12 @@ export default function MoreMenu() {
       label: 'Catalogo de Productos',
       href: '/admin/catalogo',
       icon: BookOpen,
+      show: isAdmin,
+    },
+    {
+      label: 'Recetas',
+      href: '/admin/recetas',
+      icon: UtensilsCrossed,
       show: isAdmin,
     },
     {

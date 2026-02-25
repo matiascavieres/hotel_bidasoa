@@ -22,6 +22,7 @@ const ACTION_DESCRIPTIONS: Record<LogAction, string> = {
   user_created: 'Usuario creado',
   user_updated: 'Usuario actualizado',
   inbound_received: 'Ingreso recibido',
+  sales_import: 'Importación de ventas',
 }
 
 export function RecentActivity({ className }: RecentActivityProps) {

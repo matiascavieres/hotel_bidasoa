@@ -437,6 +437,116 @@ export type Database = {
           }
         ]
       }
+      recipes: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      recipe_ingredients: {
+        Row: {
+          id: string
+          recipe_id: string
+          product_id: string
+          quantity_ml: number
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          recipe_id: string
+          product_id: string
+          quantity_ml: number
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          recipe_id?: string
+          product_id?: string
+          quantity_ml?: number
+          notes?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_ingredients_recipe_id_fkey"
+            columns: ["recipe_id"]
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_ingredients_product_id_fkey"
+            columns: ["product_id"]
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      sales_imports: {
+        Row: {
+          id: string
+          imported_by: string
+          filename: string
+          import_date: string
+          total_rows: number
+          matched_recipes: number
+          unmatched_recipes: number
+          details: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          imported_by: string
+          filename: string
+          import_date: string
+          total_rows?: number
+          matched_recipes?: number
+          unmatched_recipes?: number
+          details?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          imported_by?: string
+          filename?: string
+          import_date?: string
+          total_rows?: number
+          matched_recipes?: number
+          unmatched_recipes?: number
+          details?: Json
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_imports_imported_by_fkey"
+            columns: ["imported_by"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       audit_logs: {
         Row: {
           id: string

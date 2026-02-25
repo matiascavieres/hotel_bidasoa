@@ -24,6 +24,7 @@ export type LogAction =
   | 'user_created'
   | 'user_updated'
   | 'inbound_received'
+  | 'sales_import'
 
 // Unit types for display
 export type UnitType = 'ml' | 'bottles' | 'units'
@@ -220,6 +221,45 @@ export interface StockSummary {
   low_stock_count: number
   out_of_stock_count: number
   pending_requests: number
+}
+
+// Recipe (receta de cóctel)
+export interface Recipe {
+  id: string
+  name: string
+  description: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  // Joined fields
+  ingredients?: RecipeIngredient[]
+}
+
+// Recipe Ingredient (ingrediente de receta)
+export interface RecipeIngredient {
+  id: string
+  recipe_id: string
+  product_id: string
+  quantity_ml: number
+  notes: string | null
+  created_at: string
+  // Joined fields
+  product?: Product
+}
+
+// Sales Import (importación de ventas)
+export interface SalesImport {
+  id: string
+  imported_by: string
+  filename: string
+  import_date: string
+  total_rows: number
+  matched_recipes: number
+  unmatched_recipes: number
+  details: Record<string, unknown>
+  created_at: string
+  // Joined fields
+  importer?: User
 }
 
 // Sales data from POS analysis

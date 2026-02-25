@@ -11,6 +11,8 @@ import {
   BookOpen,
   Bell,
   PackagePlus,
+  Download,
+  UtensilsCrossed,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
@@ -67,6 +69,12 @@ const mainNavItems: NavItem[] = [
     icon: TrendingUp,
     roles: ['admin', 'bodeguero'],
   },
+  {
+    label: 'Importar Ventas',
+    href: '/ventas/importar',
+    icon: Download,
+    roles: ['admin', 'bodeguero'],
+  },
 ]
 
 const adminNavItems: NavItem[] = [
@@ -80,6 +88,12 @@ const adminNavItems: NavItem[] = [
     label: 'Catalogo',
     href: '/admin/catalogo',
     icon: BookOpen,
+    roles: ['admin'],
+  },
+  {
+    label: 'Recetas',
+    href: '/admin/recetas',
+    icon: UtensilsCrossed,
     roles: ['admin'],
   },
   {
