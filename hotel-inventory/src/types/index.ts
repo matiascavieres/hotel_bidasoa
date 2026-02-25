@@ -73,7 +73,7 @@ export interface Product {
   updated_at: string
   // Joined fields
   category?: Category
-  supplier?: Supplier
+  supplier?: Supplier | null
 }
 
 // Inventory
