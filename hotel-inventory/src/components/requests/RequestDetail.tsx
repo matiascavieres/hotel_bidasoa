@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Check, X, Truck, Loader2, Download } from 'lucide-react'
+import { Check, X, Truck, Loader2, Download, ImageIcon, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,7 @@ import {
   useMarkDelivered,
 } from '@/hooks/useRequests'
 import { LOCATION_NAMES, REQUEST_STATUS_CONFIG, type RequestStatus } from '@/types'
+import { supabase } from '@/lib/supabase'
 
 interface RequestDetailProps {
   requestId: string
@@ -32,6 +33,8 @@ export function RequestDetail({ requestId, open, onClose }: RequestDetailProps) 
   const { profile, user } = useAuth()
   const { toast } = useToast()
   const [availability, setAvailability] = useState<Record<string, boolean>>({})
+  const [signedUrls, setSignedUrls] = useState<string[]>([])
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
   // Fetch request data
   const { data: request, isLoading: requestLoading } = useRequest(requestId)
@@ -53,6 +56,23 @@ export function RequestDetail({ requestId, open, onClose }: RequestDetailProps) 
       })
       setAvailability(initialAvailability)
     }
+  }, [request])
+
+  // Fetch signed URLs for attached photos
+  useEffect(() => {
+    const paths = (request as { image_urls?: string[] } | null)?.image_urls || []
+    if (paths.length === 0) {
+      setSignedUrls([])
+      return
+    }
+    supabase.storage
+      .from('request-images')
+      .createSignedUrls(paths, 60 * 60)
+      .then(({ data }) => {
+        if (data) {
+          setSignedUrls(data.map((item) => item.signedUrl).filter(Boolean))
+        }
+      })
   }, [request])
 
   const formatDate = (dateString: string) => {
@@ -247,6 +267,7 @@ export function RequestDetail({ requestId, open, onClose }: RequestDetailProps) 
   console.log('[RequestDetail] Show deliver button:', isBodeguero && status === 'approved')
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md flex flex-col">
         <DialogHeader>
@@ -331,6 +352,35 @@ export function RequestDetail({ requestId, open, onClose }: RequestDetailProps) 
               )
             })}
           </div>
+
+          {/* Photo gallery */}
+          {signedUrls.length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-2">
+                <h4 className="font-medium flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4" />
+                  Fotografías ({signedUrls.length})
+                </h4>
+                <div className="grid grid-cols-3 gap-2">
+                  {signedUrls.map((url, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className="relative aspect-square overflow-hidden rounded-md border hover:opacity-90 transition-opacity"
+                      onClick={() => setLightboxIndex(idx)}
+                    >
+                      <img
+                        src={url}
+                        alt={`Foto ${idx + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <DialogFooter className="flex-col gap-2 sm:flex-row">
@@ -378,5 +428,42 @@ export function RequestDetail({ requestId, open, onClose }: RequestDetailProps) 
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* Lightbox */}
+    {lightboxIndex !== null && (
+      <Dialog open onOpenChange={() => setLightboxIndex(null)}>
+        <DialogContent className="max-w-3xl p-2 bg-black/90 border-none">
+          <div className="relative flex items-center justify-center min-h-[60vh]">
+            <img
+              src={signedUrls[lightboxIndex]}
+              alt={`Foto ${lightboxIndex + 1}`}
+              className="max-h-[80vh] max-w-full object-contain rounded"
+            />
+            {signedUrls.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  className="absolute left-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/80 transition-colors"
+                  onClick={(e) => { e.stopPropagation(); setLightboxIndex((lightboxIndex - 1 + signedUrls.length) % signedUrls.length) }}
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  className="absolute right-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/80 transition-colors"
+                  onClick={(e) => { e.stopPropagation(); setLightboxIndex((lightboxIndex + 1) % signedUrls.length) }}
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </>
+            )}
+            <span className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1 text-xs text-white">
+              {lightboxIndex + 1} / {signedUrls.length}
+            </span>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )}
+    </>
   )
 }
