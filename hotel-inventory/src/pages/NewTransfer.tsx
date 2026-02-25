@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Camera, X, ImageIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
@@ -26,10 +26,13 @@ export default function NewTransfer() {
   const { profile, user } = useAuth()
   const { toast } = useToast()
   const createTransfer = useCreateTransfer()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [fromLocation, setFromLocation] = useState<LocationType>('bodega')
   const [toLocation, setToLocation] = useState<LocationType | ''>('')
   const [cart, setCart] = useState<CartItem[]>([])
   const [notes, setNotes] = useState('')
+  const [imageFiles, setImageFiles] = useState<File[]>([])
+  const [imagePreviews, setImagePreviews] = useState<string[]>([])
 
   const availableDestinations = locations.filter((loc) => loc !== fromLocation)
 
@@ -58,6 +61,25 @@ export default function NewTransfer() {
 
   const handleRemoveItem = (productId: string) => {
     setCart(cart.filter((item) => item.product.id !== productId))
+  }
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    setImageFiles((prev) => [...prev, ...files])
+    files.forEach((file) => {
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        setImagePreviews((prev) => [...prev, ev.target?.result as string])
+      }
+      reader.readAsDataURL(file)
+    })
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleRemoveImage = (index: number) => {
+    setImageFiles((prev) => prev.filter((_, i) => i !== index))
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index))
   }
 
   const handleSubmit = async () => {
@@ -96,6 +118,7 @@ export default function NewTransfer() {
         notes,
         creatorId: user.id,
         creatorName: profile?.full_name || 'Usuario',
+        imageFiles,
       },
       {
         onSuccess: () => {
@@ -208,6 +231,58 @@ export default function NewTransfer() {
                 onUpdateQuantity={handleUpdateQuantity}
                 onRemove={handleRemoveItem}
               />
+            </CardContent>
+          </Card>
+
+          {/* Fotografías */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <ImageIcon className="h-5 w-5" />
+                Fotografías (opcional)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {imagePreviews.length > 0 && (
+                <div className="grid grid-cols-3 gap-2">
+                  {imagePreviews.map((src, idx) => (
+                    <div key={idx} className="relative aspect-square">
+                      <img
+                        src={src}
+                        alt={`Imagen ${idx + 1}`}
+                        className="h-full w-full rounded-md border object-cover"
+                      />
+                      <button
+                        type="button"
+                        className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-white hover:bg-destructive/80"
+                        onClick={() => handleRemoveImage(idx)}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleImageChange}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Camera className="mr-2 h-4 w-4" />
+                {imagePreviews.length > 0 ? 'Agregar más fotos' : 'Adjuntar fotografías'}
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                Puedes adjuntar fotos desde tu teléfono o computador
+              </p>
             </CardContent>
           </Card>
 

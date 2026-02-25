@@ -189,6 +189,7 @@ export type Database = {
           location: 'bodega' | 'bar_casa_sanz' | 'bar_hotel_bidasoa'
           status: 'pending' | 'approved' | 'rejected' | 'delivered'
           notes: string | null
+          image_urls: string[]
           approved_by: string | null
           approved_at: string | null
           delivered_by: string | null
@@ -202,6 +203,7 @@ export type Database = {
           location: 'bodega' | 'bar_casa_sanz' | 'bar_hotel_bidasoa'
           status?: 'pending' | 'approved' | 'rejected' | 'delivered'
           notes?: string | null
+          image_urls?: string[]
           approved_by?: string | null
           approved_at?: string | null
           delivered_by?: string | null
@@ -215,6 +217,7 @@ export type Database = {
           location?: 'bodega' | 'bar_casa_sanz' | 'bar_hotel_bidasoa'
           status?: 'pending' | 'approved' | 'rejected' | 'delivered'
           notes?: string | null
+          image_urls?: string[]
           approved_by?: string | null
           approved_at?: string | null
           delivered_by?: string | null
@@ -285,6 +288,7 @@ export type Database = {
           created_by: string
           status: 'pending' | 'completed'
           notes: string | null
+          image_urls: string[]
           confirmed_by: string | null
           confirmed_at: string | null
           created_at: string
@@ -297,6 +301,7 @@ export type Database = {
           created_by: string
           status?: 'pending' | 'completed'
           notes?: string | null
+          image_urls?: string[]
           confirmed_by?: string | null
           confirmed_at?: string | null
           created_at?: string
@@ -309,6 +314,7 @@ export type Database = {
           created_by?: string
           status?: 'pending' | 'completed'
           notes?: string | null
+          image_urls?: string[]
           confirmed_by?: string | null
           confirmed_at?: string | null
           created_at?: string

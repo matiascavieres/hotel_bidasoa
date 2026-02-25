@@ -97,6 +97,7 @@ export interface Request {
   location: LocationType
   status: RequestStatus
   notes: string | null
+  image_urls: string[]
   approved_by: string | null
   approved_at: string | null
   delivered_by: string | null
@@ -132,6 +133,7 @@ export interface Transfer {
   created_by: string
   status: TransferStatus
   notes: string | null
+  image_urls: string[]
   confirmed_by: string | null
   confirmed_at: string | null
   created_at: string

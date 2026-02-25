@@ -111,14 +111,32 @@ export function useCreateRequest() {
       location,
       requesterId,
       requesterName,
+      imageFiles,
     }: {
       items: CartItem[]
       notes?: string
       location: LocationType
       requesterId: string
       requesterName: string
+      imageFiles?: File[]
     }) => {
-      // Create the request
+      // 1. Upload images to Supabase Storage
+      const imageUrls: string[] = []
+      for (const file of imageFiles || []) {
+        const ext = file.name.split('.').pop() || 'jpg'
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${ext}`
+        const filePath = `${requesterId}/${fileName}`
+        const { error: uploadError } = await supabase.storage
+          .from('request-images')
+          .upload(filePath, file, { contentType: file.type })
+        if (uploadError) {
+          console.error('Error uploading image:', uploadError)
+          continue
+        }
+        imageUrls.push(filePath)
+      }
+
+      // 2. Create the request
       const { data: request, error: requestError } = await supabase
         .from('requests')
         .insert({
@@ -126,6 +144,7 @@ export function useCreateRequest() {
           location,
           notes,
           status: 'pending',
+          image_urls: imageUrls,
         })
         .select()
         .single()

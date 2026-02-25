@@ -72,6 +72,7 @@ export function useCreateTransfer() {
       notes,
       creatorId,
       creatorName,
+      imageFiles,
     }: {
       fromLocation: LocationType
       toLocation: LocationType
@@ -79,8 +80,25 @@ export function useCreateTransfer() {
       notes?: string
       creatorId: string
       creatorName: string
+      imageFiles?: File[]
     }) => {
-      // Create the transfer
+      // 1. Upload images to Supabase Storage
+      const imageUrls: string[] = []
+      for (const file of imageFiles || []) {
+        const ext = file.name.split('.').pop() || 'jpg'
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${ext}`
+        const filePath = `${creatorId}/${fileName}`
+        const { error: uploadError } = await supabase.storage
+          .from('request-images')
+          .upload(filePath, file, { contentType: file.type })
+        if (uploadError) {
+          console.error('Error uploading image:', uploadError)
+          continue
+        }
+        imageUrls.push(filePath)
+      }
+
+      // 2. Create the transfer
       const { data: transfer, error: transferError } = await supabase
         .from('transfers')
         .insert({
@@ -89,6 +107,7 @@ export function useCreateTransfer() {
           created_by: creatorId,
           notes,
           status: 'pending',
+          image_urls: imageUrls,
         })
         .select()
         .single()
