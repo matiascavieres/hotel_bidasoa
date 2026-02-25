@@ -13,7 +13,6 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { useInbound } from '@/hooks/useInbounds'
 import { supabase } from '@/lib/supabase'
-import type { Inbound } from '@/types'
 
 interface InboundDetailProps {
   inboundId: string
@@ -28,7 +27,7 @@ export function InboundDetail({ inboundId, open, onClose }: InboundDetailProps) 
 
   // Generar signed URLs para las imágenes del bucket privado
   useEffect(() => {
-    const paths = (inbound as Inbound | null)?.image_urls || []
+    const paths = inbound?.image_urls || []
     if (paths.length === 0) {
       setSignedUrls([])
       return
@@ -70,7 +69,7 @@ export function InboundDetail({ inboundId, open, onClose }: InboundDetailProps) 
     }
   }
 
-  const imagePaths = (inbound as Inbound | null)?.image_urls || []
+  const imagePaths = inbound?.image_urls || []
   const imageUrls = signedUrls
 
   if (isLoading) {
@@ -101,7 +100,7 @@ export function InboundDetail({ inboundId, open, onClose }: InboundDetailProps) 
     )
   }
 
-  const creatorName = (inbound.creator as { full_name: string } | null | undefined)?.full_name || 'Usuario'
+  const creatorName = inbound.creator?.full_name || 'Usuario'
 
   return (
     <>

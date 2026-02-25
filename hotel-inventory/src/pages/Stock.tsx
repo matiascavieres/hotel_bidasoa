@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Download } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -81,8 +82,17 @@ function ExportButton({ location }: { location: LocationType }) {
 
 export default function Stock() {
   const { profile } = useAuth()
+  const [searchParams] = useSearchParams()
+
+  const locationParam = searchParams.get('location') as LocationType | null
+  const statusParam = searchParams.get('status')
+
+  const validLocations: LocationType[] = ['bodega', 'bar_casa_sanz', 'bar_hotel_bidasoa']
+
   const [selectedLocation, setSelectedLocation] = useState<LocationType>(
-    profile?.location || 'bodega'
+    locationParam && validLocations.includes(locationParam)
+      ? locationParam
+      : profile?.location || 'bodega'
   )
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -130,6 +140,7 @@ export default function Stock() {
               <StockTable
                 location={location}
                 searchQuery={searchQuery}
+                initialStatus={location === selectedLocation ? (statusParam ?? undefined) : undefined}
               />
             </TabsContent>
           ))}
@@ -138,6 +149,7 @@ export default function Stock() {
         <StockTable
           location={selectedLocation}
           searchQuery={searchQuery}
+          initialStatus={statusParam ?? undefined}
         />
       )}
     </div>

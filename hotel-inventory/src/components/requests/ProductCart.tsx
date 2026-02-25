@@ -88,50 +88,49 @@ export function ProductCart({
                   : ''
             }`}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex-1 space-y-1 min-w-0">
+            {/* Fila 1: nombre + botón eliminar */}
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0 space-y-1">
                 <p className="font-medium truncate">{item.product.name}</p>
                 <p className="text-sm text-muted-foreground">
                   {item.product.code} • {item.product.format_ml}ml
                 </p>
               </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive hover:text-destructive shrink-0"
+                onClick={() => onRemove(item.product.id)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
 
-              <div className="flex items-center gap-2">
-                <div className="flex items-center">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() =>
-                      onUpdateQuantity(item.product.id, item.quantity - 1)
-                    }
-                  >
-                    <Minus className="h-3 w-3" />
-                  </Button>
-                  <span className="w-16 text-center text-sm">
-                    {item.quantity} {getUnitLabel(item.unit_type, item.quantity)}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() =>
-                      onUpdateQuantity(item.product.id, item.quantity + 1)
-                    }
-                  >
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                </div>
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-destructive hover:text-destructive"
-                  onClick={() => onRemove(item.product.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
+            {/* Fila 2: controles de cantidad */}
+            <div className="flex items-center gap-1 mt-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={() =>
+                  onUpdateQuantity(item.product.id, item.quantity - 1)
+                }
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+              <span className="flex-1 text-center text-sm">
+                {item.quantity} {getUnitLabel(item.unit_type, item.quantity)}
+              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={() =>
+                  onUpdateQuantity(item.product.id, item.quantity + 1)
+                }
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
             </div>
 
             {stockStatus && (

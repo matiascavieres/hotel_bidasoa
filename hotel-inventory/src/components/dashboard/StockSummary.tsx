@@ -76,6 +76,7 @@ export function StockSummary() {
       icon: Package,
       description: 'en catálogo',
       href: '/stock',
+      statusFilter: undefined as string | undefined,
     },
     {
       title: 'Stock Bajo',
@@ -84,6 +85,7 @@ export function StockSummary() {
       description: 'productos',
       variant: 'warning' as const,
       href: '/stock',
+      statusFilter: 'Stock Bajo' as string | undefined,
     },
     {
       title: 'Sin Stock',
@@ -92,6 +94,7 @@ export function StockSummary() {
       description: 'productos',
       variant: 'destructive' as const,
       href: '/stock',
+      statusFilter: 'Sin Stock' as string | undefined,
     },
     {
       title: 'Alertas',
@@ -100,6 +103,7 @@ export function StockSummary() {
       description: 'activas',
       variant: 'warning' as const,
       href: canSwitchLocation ? '/admin/alertas' : '/stock',
+      statusFilter: undefined as string | undefined,
     },
   ]
 
@@ -155,7 +159,17 @@ export function StockSummary() {
           <Card
             key={stat.title}
             className="cursor-pointer transition-shadow hover:shadow-md"
-            onClick={() => navigate(stat.href)}
+            onClick={() => {
+              const params = new URLSearchParams()
+              if (locationFilter) {
+                params.set('location', locationFilter)
+              }
+              if (stat.statusFilter) {
+                params.set('status', stat.statusFilter)
+              }
+              const query = params.toString()
+              navigate(query ? `${stat.href}?${query}` : stat.href)
+            }}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>

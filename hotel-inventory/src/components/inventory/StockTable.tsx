@@ -12,6 +12,7 @@ import type { LocationType } from '@/types'
 interface StockTableProps {
   location: LocationType
   searchQuery: string
+  initialStatus?: string
 }
 
 interface InventoryItem {
@@ -56,6 +57,7 @@ const getStatusOrder = (product: EditingProduct): number => {
 export function StockTable({
   location,
   searchQuery,
+  initialStatus,
 }: StockTableProps) {
   const { profile } = useAuth()
   const { data: inventory, isLoading, error } = useInventory(location)
@@ -63,7 +65,9 @@ export function StockTable({
   const [sortField, setSortField] = useState<StockSortField>('name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
-  const [selectedEstados, setSelectedEstados] = useState<string[]>([])
+  const [selectedEstados, setSelectedEstados] = useState<string[]>(
+    () => initialStatus ? [initialStatus] : []
+  )
 
   const canEdit = profile?.role === 'admin' || profile?.role === 'bodeguero'
 

@@ -10,7 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { useProducts } from '@/hooks/useProducts'
 import { useInventory, useCategories } from '@/hooks/useInventory'
 import type { CartItem, Product, UnitType } from '@/types'
@@ -93,9 +92,9 @@ export function ProductSelector({ onAddToCart }: ProductSelectorProps) {
   return (
     <div className="space-y-4">
       {/* Category filter + Search */}
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger className="w-[160px] shrink-0">
+          <SelectTrigger className="w-full sm:w-[160px] shrink-0">
             <SelectValue placeholder="Categoría" />
           </SelectTrigger>
           <SelectContent>
@@ -117,7 +116,7 @@ export function ProductSelector({ onAddToCart }: ProductSelectorProps) {
       </div>
 
       {/* Product list */}
-      <ScrollArea className="h-[300px] rounded-md border">
+      <div className="h-[300px] overflow-y-auto overflow-x-hidden rounded-md border">
         <div className="p-2">
           {filteredProducts.map((product) => {
             const { stockMl, bottles, hasStock } = getStockInfo(product)
@@ -149,16 +148,16 @@ export function ProductSelector({ onAddToCart }: ProductSelectorProps) {
                     </Badge>
                   </div>
                 </div>
-                <div className="ml-2 flex flex-col items-end gap-1 shrink-0">
+                <div className="ml-2 flex flex-col items-end gap-1 shrink-0 max-w-[80px]">
                   {product.format_ml && (
                     <span className="text-xs opacity-70">{product.format_ml}ml</span>
                   )}
                   {hasStock ? (
-                    <Badge variant="secondary" className="text-xs whitespace-nowrap bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                       {bottles > 0 ? `${bottles} bot.` : `${stockMl}ml`}
                     </Badge>
                   ) : (
-                    <Badge variant="destructive" className="text-xs whitespace-nowrap">
+                    <Badge variant="destructive" className="text-xs">
                       Sin stock
                     </Badge>
                   )}
@@ -172,7 +171,7 @@ export function ProductSelector({ onAddToCart }: ProductSelectorProps) {
             </p>
           )}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Add to cart section */}
       {selectedProduct && (
@@ -194,16 +193,16 @@ export function ProductSelector({ onAddToCart }: ProductSelectorProps) {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Input
               type="number"
               min="1"
               value={quantity}
               onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-              className="w-20"
+              className="w-20 shrink-0"
             />
             <Select value={unit} onValueChange={(v) => setUnit(v as UnitType)}>
-              <SelectTrigger className="w-[100px]">
+              <SelectTrigger className="flex-1 sm:w-[100px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -216,6 +215,7 @@ export function ProductSelector({ onAddToCart }: ProductSelectorProps) {
               size="sm"
               onClick={handleAddToCart}
               disabled={!selectedStockInfo?.hasStock}
+              className="shrink-0"
             >
               <Plus className="h-4 w-4" />
             </Button>

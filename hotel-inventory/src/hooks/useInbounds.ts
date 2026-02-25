@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import type { CartItem } from '@/types'
+import type { CartItem, Inbound } from '@/types'
 
 export function useInbounds() {
   return useQuery({
@@ -23,7 +23,7 @@ export function useInbounds() {
         .order('received_at', { ascending: false })
 
       if (error) throw error
-      return data
+      return data as unknown as Inbound[]
     },
   })
 }
@@ -50,7 +50,7 @@ export function useInbound(id: string) {
         .single()
 
       if (error) throw error
-      return data
+      return data as unknown as Inbound
     },
     enabled: !!id,
   })

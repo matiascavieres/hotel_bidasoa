@@ -23,7 +23,7 @@ export default function Requests() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Solicitudes</h1>
           <p className="text-muted-foreground">
@@ -32,13 +32,13 @@ export default function Requests() {
               : 'Tus solicitudes de productos'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap justify-end">
           {isBodeguero && (
             <Select
               value={locationFilter}
               onValueChange={(v) => setLocationFilter(v as LocationType | 'all')}
             >
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="Todas las ubicaciones" />
               </SelectTrigger>
               <SelectContent>
@@ -48,8 +48,8 @@ export default function Requests() {
               </SelectContent>
             </Select>
           )}
-          <Link to="/solicitudes/nueva">
-            <Button>
+          <Link to="/solicitudes/nueva" className={isBodeguero ? '' : 'w-full sm:w-auto'}>
+            <Button className={isBodeguero ? '' : 'w-full sm:w-auto'}>
               <Plus className="mr-2 h-4 w-4" />
               Nueva Solicitud
             </Button>
@@ -57,11 +57,31 @@ export default function Requests() {
         </div>
       </div>
 
+      {/* Select de estado — solo visible en móvil */}
+      <div className="sm:hidden">
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v as RequestStatus | 'all')}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Estado" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas</SelectItem>
+            <SelectItem value="pending">Pendientes</SelectItem>
+            <SelectItem value="approved">Aprobadas</SelectItem>
+            <SelectItem value="delivered">Entregadas</SelectItem>
+            <SelectItem value="rejected">Rechazadas</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <Tabs
         value={statusFilter}
         onValueChange={(v) => setStatusFilter(v as RequestStatus | 'all')}
       >
-        <TabsList>
+        {/* Tabs — solo visibles en sm+ */}
+        <TabsList className="hidden sm:flex">
           <TabsTrigger value="all">Todas</TabsTrigger>
           <TabsTrigger value="pending">Pendientes</TabsTrigger>
           <TabsTrigger value="approved">Aprobadas</TabsTrigger>

@@ -66,12 +66,40 @@ export type Database = {
         }
         Relationships: []
       }
+      suppliers: {
+        Row: {
+          id: string
+          name: string
+          email: string
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          email: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          email?: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           id: string
           code: string
           name: string
           category_id: string
+          supplier_id: string | null
           format_ml: number | null
           sale_price: number | null
           is_active: boolean
@@ -83,6 +111,7 @@ export type Database = {
           code: string
           name: string
           category_id: string
+          supplier_id?: string | null
           format_ml?: number | null
           sale_price?: number | null
           is_active?: boolean
@@ -94,6 +123,7 @@ export type Database = {
           code?: string
           name?: string
           category_id?: string
+          supplier_id?: string | null
           format_ml?: number | null
           sale_price?: number | null
           is_active?: boolean
@@ -105,6 +135,12 @@ export type Database = {
             foreignKeyName: "products_category_id_fkey"
             columns: ["category_id"]
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_supplier_id_fkey"
+            columns: ["supplier_id"]
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           }
         ]
@@ -315,6 +351,86 @@ export type Database = {
           },
           {
             foreignKeyName: "transfer_items_product_id_fkey"
+            columns: ["product_id"]
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      inbounds: {
+        Row: {
+          id: string
+          created_by: string
+          invoice_number: string | null
+          notes: string | null
+          image_urls: string[]
+          received_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          created_by: string
+          invoice_number?: string | null
+          notes?: string | null
+          image_urls?: string[]
+          received_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          created_by?: string
+          invoice_number?: string | null
+          notes?: string | null
+          image_urls?: string[]
+          received_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbounds_created_by_fkey"
+            columns: ["created_by"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      inbound_items: {
+        Row: {
+          id: string
+          inbound_id: string
+          product_id: string
+          quantity_received: number
+          unit_type: 'ml' | 'bottles' | 'units'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          inbound_id: string
+          product_id: string
+          quantity_received: number
+          unit_type?: 'ml' | 'bottles' | 'units'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          inbound_id?: string
+          product_id?: string
+          quantity_received?: number
+          unit_type?: 'ml' | 'bottles' | 'units'
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_items_inbound_id_fkey"
+            columns: ["inbound_id"]
+            referencedRelation: "inbounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_items_product_id_fkey"
             columns: ["product_id"]
             referencedRelation: "products"
             referencedColumns: ["id"]

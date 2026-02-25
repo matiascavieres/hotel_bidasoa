@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Check, X, Truck, Loader2 } from 'lucide-react'
+import { Check, X, Truck, Loader2, Download } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -155,6 +155,55 @@ export function RequestDetail({ requestId, open, onClose }: RequestDetailProps) 
     }))
   }
 
+  const handleExportCSV = () => {
+    if (!request) return
+
+    const locationName = LOCATION_NAMES[request.location as keyof typeof LOCATION_NAMES] || request.location
+    const statusLabel = REQUEST_STATUS_CONFIG[status].label
+    const title = formatRequestTitle(request.created_at, requesterName, request.location)
+
+    const metaRows = [
+      ['Pedido', title],
+      ['Fecha', formatDate(request.created_at)],
+      ['Solicitante', requesterName],
+      ['Local', locationName],
+      ['Estado', statusLabel],
+      ['Notas', request.notes || ''],
+      [],
+      ['Producto', 'Código', 'Cantidad', 'Unidad', 'Disponibilidad'],
+    ]
+
+    const itemRows = (request.items || []).map((item) => {
+      const product = item.product as { name: string; code: string } | null
+      const availabilityText =
+        item.is_available === null ? '' : item.is_available ? 'Disponible' : 'No disponible'
+      const unit = item.unit_type === 'bottles' ? 'bot.' : item.unit_type
+      return [
+        product?.name || 'Producto',
+        product?.code || '',
+        String(item.quantity_requested),
+        unit,
+        availabilityText,
+      ]
+    })
+
+    const allRows = [...metaRows, ...itemRows]
+    const csvContent = allRows
+      .map((row) =>
+        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+      )
+      .join('\n')
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const fileName = `pedido_${new Date(request.created_at).toLocaleDateString('es-CL').replace(/\//g, '-')}_${locationName.replace(/\s+/g, '_')}.csv`
+    link.href = url
+    link.download = fileName
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   if (requestLoading) {
     return (
       <Dialog open={open} onOpenChange={onClose}>
@@ -215,9 +264,20 @@ export function RequestDetail({ requestId, open, onClose }: RequestDetailProps) 
               {REQUEST_STATUS_CONFIG[status].label}
             </Badge>
           </DialogTitle>
-          <DialogDescription>
-            Creada: {formatDate(request.created_at)}
-          </DialogDescription>
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <DialogDescription>
+              Creada: {formatDate(request.created_at)}
+            </DialogDescription>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCSV}
+              className="shrink-0"
+            >
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              Exportar CSV
+            </Button>
+          </div>
         </DialogHeader>
 
         <div className="overflow-y-auto space-y-4 pr-1 max-h-[55vh]">

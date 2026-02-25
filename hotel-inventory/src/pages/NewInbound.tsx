@@ -15,7 +15,7 @@ import type { CartItem } from '@/types'
 
 export default function NewInbound() {
   const navigate = useNavigate()
-  const { user, profile } = useAuth()
+  const { user } = useAuth()
   const { toast } = useToast()
   const createInbound = useCreateInbound()
   const fileInputRef = useRef<HTMLInputElement>(null)
