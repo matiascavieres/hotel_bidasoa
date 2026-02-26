@@ -412,6 +412,101 @@ const landingStyles = `
   .lp-tech-list li { display: flex; gap: 8px; }
   .lp-tech-list .lp-bullet { font-weight: 600; }
 
+  /* Pricing grid (two options side by side) */
+  .lp-pricing-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    width: 100%;
+  }
+
+  .lp-price-option {
+    background: white;
+    border: 1px solid var(--lp-border);
+    border-radius: 24px;
+    padding: 2.5rem;
+    position: relative;
+  }
+
+  .lp-price-option.recommended {
+    border: 2px solid var(--lp-accent);
+    box-shadow: 0 10px 60px rgba(59,130,246,0.15);
+  }
+
+  .lp-price-option-badge {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--lp-accent);
+    color: white;
+    padding: 6px 20px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .lp-price-option-title { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--lp-text-light); margin-bottom: 0.5rem; }
+  .lp-price-option-name { font-size: 1.25rem; font-weight: 800; color: var(--lp-primary); margin-bottom: 1.25rem; }
+  .lp-price-option-amount { font-size: 2.5rem; font-weight: 900; color: var(--lp-primary); line-height: 1; }
+  .lp-price-option-amount span { font-size: 1rem; font-weight: 500; color: var(--lp-text-light); }
+  .lp-price-option-sub { font-size: 0.8rem; color: var(--lp-text-light); margin-top: 0.4rem; margin-bottom: 1.5rem; }
+  .lp-price-option-amount-secondary { font-size: 1.5rem; font-weight: 800; color: var(--lp-accent); margin-top: 0.75rem; }
+  .lp-price-option-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+  .lp-price-option-list li { display: flex; align-items: flex-start; gap: 8px; font-size: 0.88rem; color: var(--lp-text); }
+  .lp-price-option-list .lp-check-icon { color: var(--lp-success); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+
+  /* Steps (Próximos Pasos) */
+  .lp-steps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .lp-step-card {
+    background: white;
+    border: 1px solid var(--lp-border);
+    border-radius: 16px;
+    padding: 2rem;
+    transition: all 0.3s;
+  }
+
+  .lp-step-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+    border-color: var(--lp-accent);
+  }
+
+  .lp-step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    background: var(--lp-primary);
+    color: white;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    font-style: italic;
+  }
+
+  .lp-step-card h3 { font-size: 1.05rem; font-weight: 700; color: var(--lp-primary); margin-bottom: 0.5rem; }
+  .lp-step-card p { font-size: 0.88rem; color: var(--lp-text-light); line-height: 1.5; margin: 0; }
+
+  .lp-uf-banner {
+    background: linear-gradient(135deg, #0f172a, #1e3a5f);
+    border-radius: 16px;
+    padding: 1.5rem 2rem;
+    color: white;
+    text-align: center;
+    font-size: 0.95rem;
+    color: #cbd5e1;
+  }
+
   /* Animations */
   @keyframes lpFadeInUp {
     from { opacity: 0; transform: translateY(30px); }
@@ -431,6 +526,8 @@ const landingStyles = `
     .lp-price-card { padding: 2rem; }
     .lp-price-amount { font-size: 3rem; }
     .lp-nav-links { display: none; }
+    .lp-pricing-grid { grid-template-columns: 1fr; }
+    .lp-steps-grid { grid-template-columns: 1fr; }
     .lp-nav-login-mobile {
       display: inline-flex !important;
       align-items: center;
@@ -526,7 +623,8 @@ export default function LandingPage() {
             <a href="#funciones">Funciones</a>
             <a href="#complejidad">Tecnología</a>
             <a href="#roi">ROI</a>
-            <a href="#inversion">Inversión</a>
+            <a href="#inversion">Precios</a>
+            <a href="#proximos-pasos">Próximos Pasos</a>
             <Link to="/login" className="lp-nav-login">
               <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
               Iniciar Sesión
@@ -642,6 +740,7 @@ export default function LandingPage() {
                 <tr><td><strong>Pedidos internos</strong></td><td>WhatsApp, papeles, verbal</td><td><span className="lp-check">✓</span> Flujo formal: Solicitud → Aprobación → Entrega</td></tr>
                 <tr><td><strong>Alertas de stock bajo</strong></td><td>Se enteran cuando ya falta</td><td><span className="lp-check">✓</span> Alertas automáticas por email antes del quiebre</td></tr>
                 <tr><td><strong>Traspasos entre bares</strong></td><td>Sin registro, sin control</td><td><span className="lp-check">✓</span> Transferencias trazables con confirmación</td></tr>
+                <tr><td><strong>Entradas de mercadería</strong></td><td>Sin registro de recepciones</td><td><span className="lp-check">✓</span> Registro con fotos adjuntas, stock actualizado automáticamente</td></tr>
                 <tr><td><strong>Análisis de ventas</strong></td><td>Datos del POS sin procesar</td><td><span className="lp-check">✓</span> 906 recetas analizadas, promedios diarios calculados</td></tr>
                 <tr><td><strong>Historial / Auditoría</strong></td><td>No existe</td><td><span className="lp-check">✓</span> Log completo de cada movimiento y responsable</td></tr>
                 <tr><td><strong>Acceso remoto</strong></td><td>Hay que estar en el lugar</td><td><span className="lp-check">✓</span> Web responsiva, accesible desde celular o PC</td></tr>
@@ -691,7 +790,7 @@ export default function LandingPage() {
               <p>906 recetas del POS analizadas. Filtros por grupo, búsqueda, métricas 2024 vs 2025, promedios diarios y exportación CSV.</p>
             </div>
           </div>
-          <div className="lp-features-grid" style={{ marginTop: '2rem' }}>
+          <div style={{ marginTop: '2rem', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem' }}>
             <div className="lp-feature-card">
               <div className="lp-feature-icon blue"><svg width="28" height="28" fill="none" stroke="#3b82f6" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
               <h3>Gestión de Usuarios</h3>
@@ -706,6 +805,11 @@ export default function LandingPage() {
               <div className="lp-feature-icon amber"><svg width="28" height="28" fill="none" stroke="#f59e0b" strokeWidth="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg></div>
               <h3>Responsive / Móvil</h3>
               <p>Funciona perfecto en celular, tablet y computador. Los bartenders pueden usarlo desde su teléfono en el bar.</p>
+            </div>
+            <div className="lp-feature-card">
+              <div className="lp-feature-icon" style={{ background: '#f0fdf4' }}><svg width="28" height="28" fill="none" stroke="#16a34a" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/><rect x="2" y="3" width="20" height="18" rx="2"/></svg></div>
+              <h3>Registro de Entradas (Inbound)</h3>
+              <p>Registra cada recepción de mercadería con fotos adjuntas, confirmación y trazabilidad completa. Actualiza el stock automáticamente.</p>
             </div>
           </div>
         </div>
@@ -792,7 +896,7 @@ export default function LandingPage() {
               <h3>Pérdidas que el sistema previene</h3>
               <div className="lp-roi-item">
                 <div className="lp-roi-item-icon"><svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></div>
-                <div><div className="lp-roi-item-value">$500.000 - $1.500.000</div><div className="lp-roi-item-label">Ventas perdidas por quiebres de stock en fines de semana y eventos (2 bares)</div></div>
+                <div><div className="lp-roi-item-value">$500.000 - $1.000.000</div><div className="lp-roi-item-label">Ventas perdidas por quiebres de stock en fines de semana y eventos (2 bares)</div></div>
               </div>
               <div className="lp-roi-item">
                 <div className="lp-roi-item-icon"><svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
@@ -809,13 +913,13 @@ export default function LandingPage() {
             </div>
             <div className="lp-roi-right">
               <div className="lp-roi-card">
-                <h4>Inversión mensual</h4>
-                <div className="lp-value">$200.000 - $250.000 <span style={{ fontSize: '0.8rem', color: 'var(--lp-text-light)' }}>/mes</span></div>
-                <div className="lp-detail">Operación, mantenimiento, hosting, soporte y mejoras continuas del sistema</div>
+                <h4>Inversión mensual (Opción B)</h4>
+                <div className="lp-value">$150.000 - $180.000 <span style={{ fontSize: '0.8rem', color: 'var(--lp-text-light)' }}>/mes</span></div>
+                <div className="lp-detail">Hosting, soporte, mantención y mejoras incluidas</div>
               </div>
               <div className="lp-roi-card">
                 <h4>Pérdidas evitables estimadas (mensual)</h4>
-                <div className="lp-value green">$1.150.000 - $3.100.000</div>
+                <div className="lp-value green">$1.150.000 - $2.600.000</div>
                 <div className="lp-detail">Suma conservadora de ventas perdidas, mermas, tiempo y sobrestock entre las 3 ubicaciones</div>
               </div>
               <div className="lp-roi-card" style={{ borderColor: 'var(--lp-success)', background: '#ecfdf5' }}>
@@ -828,38 +932,82 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Inversión */}
+      {/* Propuesta de Precios */}
       <section className="lp-slide" id="inversion">
         <div className="lp-slide-content">
           <div className="lp-section-header">
             <div className="lp-section-number">6</div>
-            <h2>Inversión Mensual</h2>
-            <p>Una fracción del costo de un empleado, con impacto en toda la operación</p>
+            <h2>Propuesta de Precios</h2>
+            <p>Dos modalidades — tú eliges la que más te conviene</p>
           </div>
           <div className="lp-investment-center">
-            <div className="lp-price-card">
-              <div className="lp-price-card-badge">Sistema completo — ya desarrollado y funcionando</div>
-              <div className="lp-price-label">Inversión mensual</div>
-              <div className="lp-price-amount">$200.000 <span>- $250.000</span></div>
-              <div className="lp-price-period">pesos chilenos al mes</div>
-              <div className="lp-price-includes">
-                <h4>Incluye todo:</h4>
-                <div className="lp-price-check"><span className="lp-price-check-icon">✓</span> Plataforma completa con 9 módulos funcionando</div>
-                <div className="lp-price-check"><span className="lp-price-check-icon">✓</span> Base de datos en la nube con respaldos automáticos</div>
-                <div className="lp-price-check"><span className="lp-price-check-icon">✓</span> Autenticación segura y control de roles</div>
-                <div className="lp-price-check"><span className="lp-price-check-icon">✓</span> Alertas automáticas por email (stock bajo)</div>
-                <div className="lp-price-check"><span className="lp-price-check-icon">✓</span> Hosting web 24/7 (acceso desde cualquier dispositivo)</div>
-                <div className="lp-price-check"><span className="lp-price-check-icon">✓</span> Datos de ventas POS integrados (906 recetas, 2 años)</div>
-                <div className="lp-price-check"><span className="lp-price-check-icon">✓</span> Soporte técnico y mantenimiento continuo</div>
-                <div className="lp-price-check"><span className="lp-price-check-icon">✓</span> Mejoras y actualizaciones incluidas</div>
-                <div className="lp-price-check"><span className="lp-price-check-icon">✓</span> Usuarios ilimitados, sin costo por persona</div>
+            <div className="lp-pricing-grid">
+              {/* Opción A */}
+              <div className="lp-price-option recommended">
+                <div className="lp-price-option-badge">⭐ RECOMENDADA</div>
+                <div className="lp-price-option-title">OPCIÓN A</div>
+                <div className="lp-price-option-name">Pago Único + Mantención</div>
+                <div className="lp-price-option-amount">$1.300.000 <span>CLP</span></div>
+                <div className="lp-price-option-sub">pago único al contado por desarrollo<br/>65 hrs × $20.000/hr — mercado chileno dev</div>
+                <ul className="lp-price-option-list">
+                  <li><span className="lp-check-icon">+</span> 2UF/mes mantención (~$79.558 CLP)</li>
+                  <li><span className="lp-check-icon">+</span> Hosting a cargo del hotel</li>
+                  <li><span className="lp-check-icon">+</span> 3 meses de garantía incluidos</li>
+                  <li><span className="lp-check-icon">+</span> Capacitación al personal</li>
+                </ul>
+              </div>
+              {/* Opción B */}
+              <div className="lp-price-option">
+                <div className="lp-price-option-title">OPCIÓN B</div>
+                <div className="lp-price-option-name">SaaS Mensual + Implementación</div>
+                <div className="lp-price-option-amount">$500.000 <span>CLP pago inicial</span></div>
+                <div className="lp-price-option-sub">implementación + setup</div>
+                <div className="lp-price-option-amount-secondary">$150.000 – $180.000 <span style={{ fontSize: '0.9rem', fontWeight: 400, color: 'var(--lp-text-light)' }}>/mes</span></div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--lp-text-light)', marginBottom: '1.25rem' }}>hosting incluido</div>
+                <ul className="lp-price-option-list">
+                  <li><span className="lp-check-icon">✓</span> Hosting incluido en la tarifa mensual</li>
+                  <li><span className="lp-check-icon">✓</span> Actualizaciones y mejoras continuas</li>
+                  <li><span className="lp-check-icon">✓</span> Soporte prioritario incluido</li>
+                  <li><span className="lp-check-icon">✓</span> Afiliación mínima x 1 año</li>
+                </ul>
               </div>
             </div>
             <div className="lp-context-row">
-              <div className="lp-context-card"><div className="lp-emoji">💼</div><h4>Menos que medio sueldo mínimo</h4><p>Cuesta menos que medio empleado pero mejora la productividad de todo el equipo de bares y bodega</p></div>
+              <div className="lp-context-card"><div className="lp-emoji">💼</div><h4>Menos que medio sueldo mínimo</h4><p>La mantención mensual de la Opción A cuesta menos que medio empleado, con impacto en toda la operación</p></div>
               <div className="lp-context-card"><div className="lp-emoji">📈</div><h4>1 quiebre de stock evitado</h4><p>Un viernes sin espumante o gin genera más pérdida en una noche que el costo de todo un mes</p></div>
-              <div className="lp-context-card"><div className="lp-emoji">💻</div><h4>vs. Desarrollo a medida</h4><p>Un sistema equivalente cuesta $8-15 millones en desarrollo. Aquí se paga solo la operación mensual</p></div>
+              <div className="lp-context-card"><div className="lp-emoji">💻</div><h4>vs. Desarrollo a medida</h4><p>Un sistema equivalente cuesta $8-15 millones en desarrollo. Aquí se paga solo la operación</p></div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Próximos Pasos */}
+      <section className="lp-slide" id="proximos-pasos" style={{ background: 'linear-gradient(180deg, #f0f9ff 0%, #f8fafc 100%)' }}>
+        <div className="lp-slide-content">
+          <div className="lp-section-header">
+            <div className="lp-section-number">7</div>
+            <h2>Próximos Pasos</h2>
+            <p>Sin compromiso — empieza cuando quieras</p>
+          </div>
+          <div className="lp-steps-grid">
+            <div className="lp-step-card">
+              <div className="lp-step-number">I</div>
+              <h3>Demo en vivo</h3>
+              <p>Mostramos el sistema funcionando con datos reales de los bares. Ves exactamente lo que tendrías. Sin compromiso.</p>
+            </div>
+            <div className="lp-step-card">
+              <div className="lp-step-number">II</div>
+              <h3>Piloto 30 días gratuito</h3>
+              <p>Implementación completa en Hotel Bidasoa durante un mes. Evalúa el impacto real antes de comprometerse.</p>
+            </div>
+            <div className="lp-step-card">
+              <div className="lp-step-number">III</div>
+              <h3>Contrato sin permanencia</h3>
+              <p>Mes a mes (Opción B). Sin letra chica. Precio fijado en UF para proteger ambas partes de la inflación. Cancela cuando quieras.</p>
+            </div>
+          </div>
+          <div className="lp-uf-banner">
+            🔒 Precio fijado en UF &nbsp;·&nbsp; Te protege de la inflación &nbsp;·&nbsp; Da seriedad profesional al contrato
           </div>
         </div>
       </section>
@@ -874,8 +1022,8 @@ export default function LandingPage() {
           </p>
           <div className="lp-cta-benefits">
             <div className="lp-cta-benefit"><span className="lp-cta-benefit-icon">✓</span> Implementación inmediata</div>
-            <div className="lp-cta-benefit"><span className="lp-cta-benefit-icon">✓</span> Sin contratos largos</div>
-            <div className="lp-cta-benefit"><span className="lp-cta-benefit-icon">✓</span> Cancelable en cualquier momento</div>
+            <div className="lp-cta-benefit"><span className="lp-cta-benefit-icon">✓</span> Piloto 30 días gratuito</div>
+            <div className="lp-cta-benefit"><span className="lp-cta-benefit-icon">✓</span> Sin permanencia (Opción B)</div>
             <div className="lp-cta-benefit"><span className="lp-cta-benefit-icon">✓</span> Soporte y mejoras incluidas</div>
           </div>
           <Link to="/login" className="lp-hero-cta" style={{ fontSize: '1.15rem', padding: '16px 40px', marginBottom: '2.5rem' }}>
@@ -884,9 +1032,9 @@ export default function LandingPage() {
           </Link>
           <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '2rem', maxWidth: 750, margin: '0 auto' }}>
             <p style={{ color: '#e2e8f0', fontSize: '1.05rem', marginBottom: 0, fontStyle: 'italic' }}>
-              "Por $200.000-$250.000 al mes se obtiene control total del inventario de 3 ubicaciones,
-              alertas inteligentes calculadas con 2 años de datos reales del POS,
-              un sistema de solicitudes y transferencias con trazabilidad completa,
+              "Por $150.000-$180.000 al mes (Opción B) o un único pago de $1.300.000 + mantención (Opción A),
+              se obtiene control total del inventario de 3 ubicaciones, alertas inteligentes calculadas con 2 años
+              de datos reales del POS, un sistema de solicitudes y transferencias con trazabilidad completa,
               y análisis de ventas para tomar decisiones informadas.<br/><br/>
               La pregunta no es si se puede pagar — sino cuánto cuesta cada mes seguir sin él."
             </p>
