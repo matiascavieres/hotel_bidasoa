@@ -943,8 +943,7 @@ export default function LandingPage() {
           <div className="lp-investment-center">
             <div className="lp-pricing-grid">
               {/* Opción A */}
-              <div className="lp-price-option recommended">
-                <div className="lp-price-option-badge">⭐ RECOMENDADA</div>
+              <div className="lp-price-option">
                 <div className="lp-price-option-title">OPCIÓN A</div>
                 <div className="lp-price-option-name">Pago Único + Mantención</div>
                 <div className="lp-price-option-amount">$1.300.000 <span>CLP</span></div>
@@ -957,7 +956,8 @@ export default function LandingPage() {
                 </ul>
               </div>
               {/* Opción B */}
-              <div className="lp-price-option">
+              <div className="lp-price-option recommended">
+                <div className="lp-price-option-badge">⭐ RECOMENDADA</div>
                 <div className="lp-price-option-title">OPCIÓN B</div>
                 <div className="lp-price-option-name">SaaS Mensual + Implementación</div>
                 <div className="lp-price-option-amount">$500.000 <span>CLP pago inicial</span></div>
