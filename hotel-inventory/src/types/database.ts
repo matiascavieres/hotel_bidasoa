@@ -189,6 +189,7 @@ export type Database = {
           location: 'bodega' | 'bar_casa_sanz' | 'bar_hotel_bidasoa'
           status: 'pending' | 'approved' | 'rejected' | 'delivered'
           notes: string | null
+          rejection_notes: string | null
           image_urls: string[]
           approved_by: string | null
           approved_at: string | null
@@ -203,6 +204,7 @@ export type Database = {
           location: 'bodega' | 'bar_casa_sanz' | 'bar_hotel_bidasoa'
           status?: 'pending' | 'approved' | 'rejected' | 'delivered'
           notes?: string | null
+          rejection_notes?: string | null
           image_urls?: string[]
           approved_by?: string | null
           approved_at?: string | null
@@ -217,6 +219,7 @@ export type Database = {
           location?: 'bodega' | 'bar_casa_sanz' | 'bar_hotel_bidasoa'
           status?: 'pending' | 'approved' | 'rejected' | 'delivered'
           notes?: string | null
+          rejection_notes?: string | null
           image_urls?: string[]
           approved_by?: string | null
           approved_at?: string | null
@@ -643,6 +646,8 @@ export type Database = {
           cantidad_2025: number
           total: number
           daily_avg: number
+          importe_unitario: number
+          importe_total: number
           created_at: string
         }
         Insert: {
@@ -654,6 +659,8 @@ export type Database = {
           cantidad_2025?: number
           total?: number
           daily_avg?: number
+          importe_unitario?: number
+          importe_total?: number
           created_at?: string
         }
         Update: {
@@ -665,6 +672,8 @@ export type Database = {
           cantidad_2025?: number
           total?: number
           daily_avg?: number
+          importe_unitario?: number
+          importe_total?: number
           created_at?: string
         }
         Relationships: []

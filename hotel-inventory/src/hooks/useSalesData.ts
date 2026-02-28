@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import type { SalesData } from '@/types'
+import { deduplicateSalesData } from '@/lib/salesUtils'
 
 interface UseSalesDataOptions {
   grupos?: string[]
@@ -29,7 +30,7 @@ export function useSalesData(options: UseSalesDataOptions = {}) {
       const { data, error } = await query
 
       if (error) throw error
-      return data as SalesData[]
+      return deduplicateSalesData(data as SalesData[])
     },
   })
 }

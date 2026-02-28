@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { StockTable } from '@/components/inventory/StockTable'
+import { StockGeneralView } from '@/components/inventory/StockGeneralView'
 import { ProductSearch } from '@/components/inventory/ProductSearch'
 import { useInventory } from '@/hooks/useInventory'
 import { LOCATION_NAMES, type LocationType } from '@/types'
@@ -80,6 +81,8 @@ function ExportButton({ location }: { location: LocationType }) {
   )
 }
 
+type StockTab = 'general' | LocationType
+
 export default function Stock() {
   const { profile } = useAuth()
   const [searchParams] = useSearchParams()
@@ -89,10 +92,10 @@ export default function Stock() {
 
   const validLocations: LocationType[] = ['bodega', 'bar_casa_sanz', 'bar_hotel_bidasoa']
 
-  const [selectedLocation, setSelectedLocation] = useState<LocationType>(
+  const [selectedTab, setSelectedTab] = useState<StockTab>(
     locationParam && validLocations.includes(locationParam)
       ? locationParam
-      : profile?.location || 'bodega'
+      : 'general'
   )
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -104,6 +107,9 @@ export default function Stock() {
     ? [profile.location]
     : []
 
+  // For export button, only show when a specific location is selected
+  const selectedLocation = selectedTab !== 'general' ? selectedTab : locations[0] || 'bodega'
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -113,7 +119,9 @@ export default function Stock() {
             Visualiza y gestiona el inventario por ubicacion
           </p>
         </div>
-        <ExportButton location={selectedLocation} />
+        {selectedTab !== 'general' && (
+          <ExportButton location={selectedLocation} />
+        )}
       </div>
 
       {/* Search */}
@@ -125,22 +133,28 @@ export default function Stock() {
       {/* Location tabs */}
       {canViewAllLocations ? (
         <Tabs
-          value={selectedLocation}
-          onValueChange={(value) => setSelectedLocation(value as LocationType)}
+          value={selectedTab}
+          onValueChange={(value) => setSelectedTab(value as StockTab)}
         >
           <TabsList>
+            <TabsTrigger value="general">
+              General
+            </TabsTrigger>
             {locations.map((location) => (
               <TabsTrigger key={location} value={location}>
                 {LOCATION_NAMES[location]}
               </TabsTrigger>
             ))}
           </TabsList>
+          <TabsContent value="general">
+            <StockGeneralView searchQuery={searchQuery} />
+          </TabsContent>
           {locations.map((location) => (
             <TabsContent key={location} value={location}>
               <StockTable
                 location={location}
                 searchQuery={searchQuery}
-                initialStatus={location === selectedLocation ? (statusParam ?? undefined) : undefined}
+                initialStatus={location === selectedTab ? (statusParam ?? undefined) : undefined}
               />
             </TabsContent>
           ))}

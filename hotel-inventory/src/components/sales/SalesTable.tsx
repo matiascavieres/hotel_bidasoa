@@ -9,12 +9,13 @@ interface SalesTableProps {
   isLoading: boolean
   error: Error | null
   periodo: 'total' | '2024' | '2025'
+  totalVentas: number
 }
 
-type SortField = 'receta' | 'grupo' | 'cantidad_2024' | 'cantidad_2025' | 'total' | 'daily_avg'
+type SortField = 'receta' | 'grupo' | 'cantidad_2024' | 'cantidad_2025' | 'total' | 'daily_avg' | 'importe_unitario' | 'importe_total'
 type SortDirection = 'asc' | 'desc'
 
-export function SalesTable({ data, isLoading, error, periodo }: SalesTableProps) {
+export function SalesTable({ data, isLoading, error, periodo, totalVentas }: SalesTableProps) {
   const [sortField, setSortField] = useState<SortField>('total')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
@@ -55,7 +56,13 @@ export function SalesTable({ data, isLoading, error, periodo }: SalesTableProps)
     }
   }
 
+  const getPercent = (item: SalesData) => {
+    if (totalVentas === 0) return '0.0'
+    return ((getCantidad(item) / totalVentas) * 100).toFixed(1)
+  }
+
   const formatNumber = (n: number) => n.toLocaleString('es-CL')
+  const formatCurrency = (n: number) => `$${n.toLocaleString('es-CL')}`
 
   if (isLoading) {
     return (
@@ -85,7 +92,7 @@ export function SalesTable({ data, isLoading, error, periodo }: SalesTableProps)
     <>
       {/* Desktop Table */}
       <div className="hidden lg:block">
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b bg-muted/50">
@@ -139,6 +146,27 @@ export function SalesTable({ data, isLoading, error, periodo }: SalesTableProps)
                     <SortIcon field="total" />
                   </span>
                 </th>
+                <th className="px-2 py-2 text-right text-sm font-medium">
+                  % Ventas
+                </th>
+                <th
+                  className="px-2 py-2 text-right text-sm font-medium cursor-pointer hover:text-foreground"
+                  onClick={() => handleSort('importe_unitario')}
+                >
+                  <span className="inline-flex items-center justify-end">
+                    Imp. Unit.
+                    <SortIcon field="importe_unitario" />
+                  </span>
+                </th>
+                <th
+                  className="px-2 py-2 text-right text-sm font-medium cursor-pointer hover:text-foreground"
+                  onClick={() => handleSort('importe_total')}
+                >
+                  <span className="inline-flex items-center justify-end">
+                    Imp. Total
+                    <SortIcon field="importe_total" />
+                  </span>
+                </th>
                 <th
                   className="px-2 py-2 text-right text-sm font-medium cursor-pointer hover:text-foreground"
                   onClick={() => handleSort('daily_avg')}
@@ -177,6 +205,15 @@ export function SalesTable({ data, isLoading, error, periodo }: SalesTableProps)
                     {formatNumber(getCantidad(item))}
                   </td>
                   <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">
+                    {getPercent(item)}%
+                  </td>
+                  <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">
+                    {item.importe_unitario > 0 ? formatCurrency(item.importe_unitario) : '-'}
+                  </td>
+                  <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">
+                    {item.importe_total > 0 ? formatCurrency(item.importe_total) : '-'}
+                  </td>
+                  <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">
                     {item.daily_avg.toFixed(2)}
                   </td>
                 </tr>
@@ -201,11 +238,11 @@ export function SalesTable({ data, isLoading, error, periodo }: SalesTableProps)
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-base font-bold tabular-nums">{formatNumber(getCantidad(item))}</p>
-                  <p className="text-[10px] text-muted-foreground">ventas</p>
+                  <p className="text-[10px] text-muted-foreground">{getPercent(item)}% del total</p>
                 </div>
               </div>
               {periodo === 'total' && (
-                <div className="mt-2 grid grid-cols-3 gap-1 text-xs">
+                <div className="mt-2 grid grid-cols-4 gap-1 text-xs">
                   <div>
                     <p className="text-muted-foreground">2024</p>
                     <p className="font-medium tabular-nums">{formatNumber(item.cantidad_2024)}</p>
@@ -218,6 +255,12 @@ export function SalesTable({ data, isLoading, error, periodo }: SalesTableProps)
                     <p className="text-muted-foreground">Prom/dia</p>
                     <p className="font-medium tabular-nums">{item.daily_avg.toFixed(2)}</p>
                   </div>
+                  <div>
+                    <p className="text-muted-foreground">Imp. Total</p>
+                    <p className="font-medium tabular-nums">
+                      {item.importe_total > 0 ? formatCurrency(item.importe_total) : '-'}
+                    </p>
+                  </div>
                 </div>
               )}
               {periodo !== 'total' && (
@@ -226,6 +269,12 @@ export function SalesTable({ data, isLoading, error, periodo }: SalesTableProps)
                     <p className="text-muted-foreground">Prom/dia</p>
                     <p className="font-medium tabular-nums">{item.daily_avg.toFixed(2)}</p>
                   </div>
+                  {item.importe_total > 0 && (
+                    <div>
+                      <p className="text-muted-foreground">Imp. Total</p>
+                      <p className="font-medium tabular-nums">{formatCurrency(item.importe_total)}</p>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

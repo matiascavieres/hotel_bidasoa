@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Plus, Edit2, Upload, Search, Loader2 } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Plus, Edit2, Upload, Search, Loader2, LayoutList, LayoutGrid, ScanBarcode } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -22,6 +22,9 @@ import {
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { useProducts, useCategories, useCreateProduct, useUpdateProduct } from '@/hooks/useInventory'
+import { useCreateLog } from '@/hooks/useLogs'
+import { useAuth } from '@/context/AuthContext'
+import { BarcodeScanner } from '@/components/ui/barcode-scanner'
 
 interface Product {
   id: string
@@ -35,10 +38,17 @@ interface Product {
 
 export default function AdminCatalog() {
   const { toast } = useToast()
+  const { profile } = useAuth()
+  const createLog = useCreateLog()
   const [searchQuery, setSearchQuery] = useState('')
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
+    return (localStorage.getItem('catalog-view-mode') as 'list' | 'grid') || 'list'
+  })
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [isScannerOpen, setIsScannerOpen] = useState(false)
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -54,10 +64,30 @@ export default function AdminCatalog() {
 
   const isMutating = createProduct.isPending || updateProduct.isPending
 
-  const filteredProducts = (products || []).filter((product) =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    product.code.toLowerCase().includes(searchQuery.toLowerCase())
-  ) as Product[]
+  // Get unique category names from products for filter chips
+  const allCategoryNames = useMemo(() => {
+    if (!products) return []
+    return [...new Set(
+      (products as Product[]).map(p => p.category?.name || 'Sin categoria')
+    )].sort()
+  }, [products])
+
+  const toggleCategory = (cat: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(cat) ? prev.filter(x => x !== cat) : [...prev, cat]
+    )
+  }
+
+  const filteredProducts = (products || []).filter((product) => {
+    const p = product as Product
+    const matchesSearch =
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.code.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesCategory =
+      selectedCategories.length === 0 ||
+      selectedCategories.includes(p.category?.name || 'Sin categoria')
+    return matchesSearch && matchesCategory
+  }) as Product[]
 
   const handleOpenProductModal = (product?: Product) => {
     if (product) {
@@ -104,6 +134,40 @@ export default function AdminCatalog() {
         },
         {
           onSuccess: () => {
+            // Log the product edit to audit history
+            if (profile?.id && editingProduct) {
+              const changes: Record<string, { from: unknown; to: unknown }> = {}
+              if (editingProduct.code !== formData.code) {
+                changes.code = { from: editingProduct.code, to: formData.code }
+              }
+              if (editingProduct.name !== formData.name) {
+                changes.name = { from: editingProduct.name, to: formData.name }
+              }
+              if (editingProduct.category_id !== formData.categoryId) {
+                const oldCat = editingProduct.category?.name || editingProduct.category_id
+                const newCat = categories?.find(c => c.id === formData.categoryId)?.name || formData.categoryId
+                changes.category = { from: oldCat, to: newCat }
+              }
+              if ((editingProduct.format_ml || 0) !== formData.format_ml) {
+                changes.format_ml = { from: editingProduct.format_ml, to: formData.format_ml }
+              }
+              if ((editingProduct.sale_price || 0) !== (formData.sale_price || 0)) {
+                changes.sale_price = { from: editingProduct.sale_price, to: formData.sale_price }
+              }
+
+              createLog.mutate({
+                userId: profile.id,
+                action: 'product_updated',
+                entityType: 'product',
+                entityId: editingProduct.id,
+                details: ({
+                  product_name: formData.name,
+                  product_code: formData.code,
+                  changes,
+                }) as unknown as import('@/types/database').Json,
+              })
+            }
+
             toast({
               title: 'Producto actualizado',
               description: `${formData.name} ha sido actualizado`,
@@ -178,7 +242,7 @@ export default function AdminCatalog() {
         <div>
           <h1 className="text-2xl font-bold">Catalogo de Productos</h1>
           <p className="text-muted-foreground">
-            {products?.length || 0} productos en el catalogo
+            {filteredProducts.length} de {products?.length || 0} productos en el catalogo
           </p>
         </div>
         <div className="flex gap-2">
@@ -193,43 +257,119 @@ export default function AdminCatalog() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Buscar producto..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9"
-        />
+      {/* Search + View Toggle */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar producto..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <Button
+            variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => { setViewMode('list'); localStorage.setItem('catalog-view-mode', 'list') }}
+            title="Vista lista"
+          >
+            <LayoutList className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => { setViewMode('grid'); localStorage.setItem('catalog-view-mode', 'grid') }}
+            title="Vista cuadrícula"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      {/* Product list */}
-      <div className="space-y-3">
-        {filteredProducts.map((product) => (
-          <Card key={product.id}>
-            <CardContent className="flex items-center justify-between p-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <p className="font-medium">{product.name}</p>
-                  <Badge variant="outline">{product.category?.name || 'Sin categoria'}</Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {product.code} • {product.format_ml}ml
-                  {product.sale_price && ` • $${product.sale_price.toLocaleString()}`}
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => handleOpenProductModal(product)}
-              >
-                <Edit2 className="h-4 w-4" />
-              </Button>
-            </CardContent>
-          </Card>
+      {/* Category filter chips */}
+      <div className="flex flex-wrap gap-1.5 items-center">
+        <span className="text-xs text-muted-foreground font-medium mr-1">Categoria:</span>
+        <Badge
+          variant={selectedCategories.length === 0 ? 'default' : 'outline'}
+          className="cursor-pointer select-none text-xs"
+          onClick={() => setSelectedCategories([])}
+        >
+          Todas
+        </Badge>
+        {allCategoryNames.map((cat) => (
+          <Badge
+            key={cat}
+            variant={selectedCategories.includes(cat) ? 'default' : 'outline'}
+            className="cursor-pointer select-none text-xs"
+            onClick={() => toggleCategory(cat)}
+          >
+            {cat}
+          </Badge>
         ))}
       </div>
+
+      {/* List view */}
+      {viewMode === 'list' && (
+        <div className="space-y-3">
+          {filteredProducts.map((product) => (
+            <Card key={product.id}>
+              <CardContent className="flex items-center justify-between p-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{product.name}</p>
+                    <Badge variant="outline">{product.category?.name || 'Sin categoria'}</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {product.code} • {product.format_ml}ml
+                    {product.sale_price && ` • $${product.sale_price.toLocaleString()}`}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleOpenProductModal(product)}
+                >
+                  <Edit2 className="h-4 w-4" />
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Grid view */}
+      {viewMode === 'grid' && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {filteredProducts.map((product) => (
+            <Card
+              key={product.id}
+              className="cursor-pointer hover:bg-muted/30 transition-colors"
+              onClick={() => handleOpenProductModal(product)}
+            >
+              <CardContent className="p-3 space-y-2">
+                <div className="flex items-start justify-between">
+                  <Badge variant="outline" className="text-[10px]">
+                    {product.category?.name || 'Sin cat.'}
+                  </Badge>
+                  <Edit2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                </div>
+                <p className="font-medium text-sm leading-tight">{product.name}</p>
+                <div className="text-xs text-muted-foreground space-y-0.5">
+                  <p>{product.code}</p>
+                  <p>{product.format_ml}ml</p>
+                  {product.sale_price && (
+                    <p className="font-medium text-foreground">${product.sale_price.toLocaleString()}</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {filteredProducts.length === 0 && (
         <div className="py-8 text-center text-muted-foreground">
@@ -255,13 +395,26 @@ export default function AdminCatalog() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="code">Codigo</Label>
-                <Input
-                  id="code"
-                  value={formData.code}
-                  onChange={(e) =>
-                    setFormData({ ...formData, code: e.target.value })
-                  }
-                />
+                <div className="flex gap-1">
+                  <Input
+                    id="code"
+                    value={formData.code}
+                    onChange={(e) =>
+                      setFormData({ ...formData, code: e.target.value })
+                    }
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0"
+                    onClick={() => setIsScannerOpen(true)}
+                    title="Escanear codigo de barras"
+                  >
+                    <ScanBarcode className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Categoria</Label>
@@ -376,6 +529,13 @@ export default function AdminCatalog() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Barcode Scanner */}
+      <BarcodeScanner
+        open={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScan={(code) => setFormData(prev => ({ ...prev, code }))}
+      />
     </div>
   )
 }

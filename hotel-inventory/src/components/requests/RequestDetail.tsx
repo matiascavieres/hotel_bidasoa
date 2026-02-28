@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -33,8 +34,11 @@ export function RequestDetail({ requestId, open, onClose }: RequestDetailProps) 
   const { profile, user } = useAuth()
   const { toast } = useToast()
   const [availability, setAvailability] = useState<Record<string, boolean>>({})
+  const [approvedQuantities, setApprovedQuantities] = useState<Record<string, number>>({})
   const [signedUrls, setSignedUrls] = useState<string[]>([])
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [showRejectDialog, setShowRejectDialog] = useState(false)
+  const [rejectionNotes, setRejectionNotes] = useState('')
 
   // Fetch request data
   const { data: request, isLoading: requestLoading } = useRequest(requestId)
@@ -47,14 +51,18 @@ export function RequestDetail({ requestId, open, onClose }: RequestDetailProps) 
   const isMutating = approveRequest.isPending || rejectRequest.isPending || markDelivered.isPending
   const isBodeguero = profile?.role === 'bodeguero' || profile?.role === 'admin'
 
-  // Initialize availability state when request loads
+  // Initialize availability and approved quantities state when request loads
   useEffect(() => {
     if (request?.items) {
       const initialAvailability: Record<string, boolean> = {}
-      request.items.forEach(item => {
+      const initialQuantities: Record<string, number> = {}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      request.items.forEach((item: any) => {
         initialAvailability[item.id] = item.is_available ?? true
+        initialQuantities[item.id] = item.quantity_approved ?? item.quantity_requested
       })
       setAvailability(initialAvailability)
+      setApprovedQuantities(initialQuantities)
     }
   }, [request])
 
@@ -101,6 +109,7 @@ export function RequestDetail({ requestId, open, onClose }: RequestDetailProps) 
         approverId: user.id,
         approverName: profile?.full_name || 'Bodeguero',
         itemAvailability: availability,
+        itemApprovedQuantities: approvedQuantities,
       },
       {
         onSuccess: () => {
@@ -126,10 +135,13 @@ export function RequestDetail({ requestId, open, onClose }: RequestDetailProps) 
         requestId: request.id,
         approverId: user.id,
         approverName: profile?.full_name || 'Bodeguero',
+        rejectionNotes: rejectionNotes || undefined,
       },
       {
         onSuccess: () => {
           toast({ title: 'Solicitud rechazada', variant: 'destructive' })
+          setShowRejectDialog(false)
+          setRejectionNotes('')
           onClose()
         },
         onError: (error) => {
@@ -190,10 +202,11 @@ export function RequestDetail({ requestId, open, onClose }: RequestDetailProps) 
       ['Estado', statusLabel],
       ['Notas', request.notes || ''],
       [],
-      ['Producto', 'Código', 'Cantidad', 'Unidad', 'Disponibilidad'],
+      ['Producto', 'Código', 'Cant. Solicitada', 'Cant. Aprobada', 'Unidad', 'Disponibilidad'],
     ]
 
-    const itemRows = (request.items || []).map((item) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const itemRows = (request.items || []).map((item: any) => {
       const product = item.product as { name: string; code: string } | null
       const availabilityText =
         item.is_available === null ? '' : item.is_available ? 'Disponible' : 'No disponible'
@@ -202,6 +215,7 @@ export function RequestDetail({ requestId, open, onClose }: RequestDetailProps) 
         product?.name || 'Producto',
         product?.code || '',
         String(item.quantity_requested),
+        String(item.quantity_approved ?? item.quantity_requested),
         unit,
         availabilityText,
       ]
@@ -259,13 +273,6 @@ export function RequestDetail({ requestId, open, onClose }: RequestDetailProps) 
   const requesterName = (request.requester as { full_name: string } | null)?.full_name || 'Usuario'
   const status = request.status as RequestStatus
 
-  // Debug: Log status para verificar
-  console.log('[RequestDetail] Request ID:', request.id)
-  console.log('[RequestDetail] Status:', status)
-  console.log('[RequestDetail] isBodeguero:', isBodeguero)
-  console.log('[RequestDetail] Show approve buttons:', isBodeguero && status === 'pending')
-  console.log('[RequestDetail] Show deliver button:', isBodeguero && status === 'approved')
-
   return (
     <>
     <Dialog open={open} onOpenChange={onClose}>
@@ -308,45 +315,121 @@ export function RequestDetail({ requestId, open, onClose }: RequestDetailProps) 
             </div>
           )}
 
+          {/* Rejection notes display */}
+          {status === 'rejected' && (request as { rejection_notes?: string }).rejection_notes && (
+            <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3">
+              <p className="text-xs font-medium text-destructive mb-1">Motivo del rechazo:</p>
+              <p className="text-sm">{(request as { rejection_notes?: string }).rejection_notes}</p>
+            </div>
+          )}
+
           <Separator />
+
+          {/* Rejection dialog inline */}
+          {showRejectDialog && (
+            <div className="space-y-3 rounded-md border border-destructive/30 p-3 bg-destructive/5">
+              <h4 className="font-medium text-destructive text-sm">Motivo del rechazo</h4>
+              <textarea
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring min-h-[80px] resize-none"
+                placeholder="Explica por que se rechaza esta solicitud (opcional)..."
+                value={rejectionNotes}
+                onChange={(e) => setRejectionNotes(e.target.value)}
+              />
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setShowRejectDialog(false); setRejectionNotes('') }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleReject}
+                  disabled={isMutating}
+                >
+                  {rejectRequest.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                  Confirmar Rechazo
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-3">
             <h4 className="font-medium">Productos solicitados</h4>
-            {(request.items || []).map((item) => {
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {(request.items || []).map((item: any) => {
               const product = item.product as { name: string; code: string; format_ml: number } | null
+              const unitLabel = item.unit_type === 'bottles' ? 'bot.' : item.unit_type
+              const hasReducedQty = status !== 'pending' && item.quantity_approved !== null && item.quantity_approved !== item.quantity_requested
+
               return (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between rounded-md border p-3"
+                  className="rounded-md border p-3 space-y-2"
                 >
-                  <div className="flex-1">
-                    <p className="font-medium">{product?.name || 'Producto'}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {product?.code || 'N/A'} • {item.quantity_requested}{' '}
-                      {item.unit_type === 'bottles' ? 'bot.' : item.unit_type}
-                    </p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="font-medium">{product?.name || 'Producto'}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {product?.code || 'N/A'} • {item.quantity_requested} {unitLabel}
+                      </p>
+                      {hasReducedQty && (
+                        <p className="text-xs text-orange-600 mt-0.5">
+                          Aprobado: {item.quantity_approved} {unitLabel} (solicitado: {item.quantity_requested})
+                        </p>
+                      )}
+                    </div>
+
+                    {status !== 'pending' && item.is_available !== null && (
+                      <Badge variant={item.is_available ? 'success' : 'destructive'}>
+                        {item.is_available ? 'Disponible' : 'No disponible'}
+                      </Badge>
+                    )}
                   </div>
 
+                  {/* Bodeguero approval controls */}
                   {isBodeguero && status === 'pending' && (
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id={`available-${item.id}`}
-                        checked={availability[item.id] ?? true}
-                        onCheckedChange={() => toggleAvailability(item.id)}
-                      />
-                      <label
-                        htmlFor={`available-${item.id}`}
-                        className="text-sm"
-                      >
-                        Disponible
-                      </label>
-                    </div>
-                  )}
+                    <div className="flex items-center gap-3 pt-1 border-t">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id={`available-${item.id}`}
+                          checked={availability[item.id] ?? true}
+                          onCheckedChange={() => toggleAvailability(item.id)}
+                        />
+                        <label
+                          htmlFor={`available-${item.id}`}
+                          className="text-sm"
+                        >
+                          Disponible
+                        </label>
+                      </div>
 
-                  {status !== 'pending' && item.is_available !== null && (
-                    <Badge variant={item.is_available ? 'success' : 'destructive'}>
-                      {item.is_available ? 'Disponible' : 'No disponible'}
-                    </Badge>
+                      {(availability[item.id] ?? true) && (
+                        <div className="flex items-center gap-1.5 ml-auto">
+                          <label className="text-xs text-muted-foreground">Cant:</label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={item.quantity_requested}
+                            value={approvedQuantities[item.id] ?? item.quantity_requested}
+                            onChange={(e) => {
+                              const val = Math.min(
+                                Math.max(0, Number(e.target.value) || 0),
+                                item.quantity_requested
+                              )
+                              setApprovedQuantities(prev => ({
+                                ...prev,
+                                [item.id]: val,
+                              }))
+                            }}
+                            className="w-20 h-8 text-sm text-right"
+                          />
+                          <span className="text-xs text-muted-foreground">/ {item.quantity_requested}</span>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               )
@@ -384,18 +467,14 @@ export function RequestDetail({ requestId, open, onClose }: RequestDetailProps) 
         </div>
 
         <DialogFooter className="flex-col gap-2 sm:flex-row">
-          {isBodeguero && status === 'pending' && (
+          {isBodeguero && status === 'pending' && !showRejectDialog && (
             <>
               <Button
                 variant="destructive"
-                onClick={handleReject}
+                onClick={() => setShowRejectDialog(true)}
                 disabled={isMutating}
               >
-                {rejectRequest.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <X className="mr-2 h-4 w-4" />
-                )}
+                <X className="mr-2 h-4 w-4" />
                 Rechazar
               </Button>
               <Button onClick={handleApprove} disabled={isMutating}>

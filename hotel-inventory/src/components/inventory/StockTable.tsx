@@ -25,7 +25,9 @@ interface InventoryItem {
     code: string
     name: string
     format_ml: number | null
-    category?: { name: string } | null
+    category_id: string
+    sale_price: number | null
+    category?: { id: string; name: string } | null
   } | null
 }
 
@@ -34,9 +36,11 @@ interface EditingProduct {
   code: string
   name: string
   category: string
+  category_id: string
   format_ml: number
   quantity_ml: number
   min_stock_ml: number
+  sale_price: number | null
 }
 
 type StockSortField = 'name' | 'category' | 'quantity_ml' | 'status'
@@ -89,9 +93,11 @@ export function StockTable({
         code: item.product!.code,
         name: item.product!.name,
         category: item.product!.category?.name || 'Sin categoria',
+        category_id: item.product!.category_id || item.product!.category?.id || '',
         format_ml: item.product!.format_ml || 750,
         quantity_ml: item.quantity_ml,
         min_stock_ml: item.min_stock_ml || 0,
+        sale_price: item.product!.sale_price ?? null,
       }))
   }, [inventory])
 

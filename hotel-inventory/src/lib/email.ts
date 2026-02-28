@@ -165,10 +165,12 @@ export async function sendRequestRejectedEmail(params: {
   approverName: string
   location: LocationType
   recipients: string[]
+  rejectionNotes?: string
 }) {
   return sendNotificationEmail('request_rejected', params.recipients, {
     approver_name: params.approverName,
     location: LOCATION_NAMES[params.location],
+    rejection_notes: params.rejectionNotes,
   })
 }
 

@@ -97,6 +97,7 @@ export interface Request {
   location: LocationType
   status: RequestStatus
   notes: string | null
+  rejection_notes: string | null
   image_urls: string[]
   approved_by: string | null
   approved_at: string | null
@@ -274,6 +275,8 @@ export interface SalesData {
   cantidad_2025: number
   total: number
   daily_avg: number
+  importe_unitario: number
+  importe_total: number
   created_at: string
 }
 

@@ -222,11 +222,13 @@ export function useApproveRequest() {
       approverId,
       approverName,
       itemAvailability,
+      itemApprovedQuantities,
     }: {
       requestId: string
       approverId: string
       approverName: string
       itemAvailability: Record<string, boolean>
+      itemApprovedQuantities?: Record<string, number>
     }) => {
       // Get request details for email including items
       const { data: request } = await supabase
@@ -256,11 +258,18 @@ export function useApproveRequest() {
 
       if (requestError) throw requestError
 
-      // Update item availability
+      // Update item availability and approved quantities
       for (const [itemId, isAvailable] of Object.entries(itemAvailability)) {
+        const approvedQty = isAvailable && itemApprovedQuantities
+          ? (itemApprovedQuantities[itemId] ?? null)
+          : (isAvailable ? null : 0)
+
         await supabase
           .from('request_items')
-          .update({ is_available: isAvailable })
+          .update({
+            is_available: isAvailable,
+            quantity_approved: approvedQty,
+          })
           .eq('id', itemId)
       }
 
@@ -341,10 +350,12 @@ export function useRejectRequest() {
       requestId,
       approverId,
       approverName,
+      rejectionNotes,
     }: {
       requestId: string
       approverId: string
       approverName: string
+      rejectionNotes?: string
     }) => {
       // Get request details for email
       const { data: request } = await supabase
@@ -362,6 +373,7 @@ export function useRejectRequest() {
           status: 'rejected',
           approved_by: approverId,
           approved_at: new Date().toISOString(),
+          rejection_notes: rejectionNotes || null,
         })
         .eq('id', requestId)
 
@@ -375,6 +387,7 @@ export function useRejectRequest() {
           approverName,
           location: request.location,
           recipients: [requesterEmail],
+          rejectionNotes,
         })
       }
 
@@ -388,6 +401,7 @@ export function useRejectRequest() {
         details: {
           approver_name: approverName,
           status_change: 'pending → rejected',
+          rejection_notes: rejectionNotes,
         },
       })
     },
@@ -422,6 +436,7 @@ export function useMarkDelivered() {
             id,
             product_id,
             quantity_requested,
+            quantity_approved,
             unit_type,
             is_available,
             product:products(format_ml, name, code)
@@ -448,6 +463,7 @@ export function useMarkDelivered() {
         id: string
         product_id: string
         quantity_requested: number
+        quantity_approved: number | null
         unit_type: string
         is_available: boolean | null
         product: { format_ml: number; name: string; code: string } | null
@@ -476,10 +492,12 @@ export function useMarkDelivered() {
         }
 
         const formatMl = item.product?.format_ml || 750
+        // Use approved quantity if set, otherwise use requested quantity
+        const effectiveQuantity = item.quantity_approved ?? item.quantity_requested
         // Convert to ml based on unit type
         const quantityMl = item.unit_type === 'bottles'
-          ? item.quantity_requested * formatMl
-          : item.quantity_requested
+          ? effectiveQuantity * formatMl
+          : effectiveQuantity
 
         console.log(`[useMarkDelivered] Moving ${item.product?.name}: ${quantityMl}ml (${item.quantity_requested} ${item.unit_type})`)
 

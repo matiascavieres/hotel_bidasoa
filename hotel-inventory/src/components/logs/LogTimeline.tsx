@@ -48,6 +48,7 @@ interface LogEntry {
 const getActionIcon = (action: string) => {
   switch (action) {
     case 'stock_adjustment':
+    case 'product_updated':
       return Edit
     case 'request_created':
     case 'request_approved':
@@ -83,6 +84,8 @@ const getActionLabel = (action: string) => {
   switch (action) {
     case 'stock_adjustment':
       return 'Ajuste'
+    case 'product_updated':
+      return 'Editado'
     case 'request_created':
       return 'Solicitud'
     case 'request_approved':
@@ -106,8 +109,19 @@ const getDescription = (log: LogEntry) => {
   const destinationName = destination ? LOCATION_NAMES[destination as keyof typeof LOCATION_NAMES] || destination : ''
 
   switch (log.action) {
-    case 'stock_adjustment':
+    case 'stock_adjustment': {
+      const prevBottles = details.previous_bottles as number | undefined
+      const newBottles = details.new_bottles as number | undefined
+      if (prevBottles !== undefined && newBottles !== undefined) {
+        return `Ajuste de stock: ${details.product_name || 'Producto'} (${prevBottles} → ${newBottles} bot.)`
+      }
       return `Ajuste de stock: ${details.product_name || 'Producto'}`
+    }
+    case 'product_updated': {
+      const changes = details.changes as Record<string, { from: unknown; to: unknown }> | undefined
+      const changeCount = changes ? Object.keys(changes).length : 0
+      return `Producto editado: ${details.product_name || 'Producto'} (${changeCount} campo${changeCount !== 1 ? 's' : ''})`
+    }
     case 'request_created':
       return `Nueva solicitud creada (${details.items_count || 0} productos)`
     case 'request_approved':

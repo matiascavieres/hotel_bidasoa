@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Download, Filter } from 'lucide-react'
+import { Download, Filter, LayoutList, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { LogTimeline } from '@/components/logs/LogTimeline'
+import { LogTable } from '@/components/logs/LogTable'
 import { useLogs, exportLogsToCSV } from '@/hooks/useLogs'
 import { useToast } from '@/hooks/use-toast'
 
@@ -23,7 +24,10 @@ const actionTypes = [
   { value: 'request_delivered', label: 'Solicitudes entregadas' },
   { value: 'transfer_created', label: 'Traspasos creados' },
   { value: 'transfer_completed', label: 'Traspasos completados' },
+  { value: 'product_updated', label: 'Productos editados' },
 ]
+
+type HistoryViewMode = 'timeline' | 'table'
 
 export default function History() {
   const { toast } = useToast()
@@ -31,6 +35,9 @@ export default function History() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [showFilters, setShowFilters] = useState(false)
+  const [viewMode, setViewMode] = useState<HistoryViewMode>(() => {
+    return (localStorage.getItem('history-view-mode') as HistoryViewMode) || 'table'
+  })
 
   // Fetch logs with same filters used by LogTimeline
   const { data: logs } = useLogs({
@@ -38,6 +45,11 @@ export default function History() {
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
   })
+
+  const handleViewMode = (mode: HistoryViewMode) => {
+    setViewMode(mode)
+    localStorage.setItem('history-view-mode', mode)
+  }
 
   const handleExport = () => {
     if (!logs || logs.length === 0) {
@@ -85,7 +97,7 @@ export default function History() {
             Registro de todas las operaciones del sistema
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -98,6 +110,27 @@ export default function History() {
             <Download className="mr-2 h-4 w-4" />
             Exportar
           </Button>
+
+          <div className="ml-auto flex items-center gap-1">
+            <Button
+              variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => handleViewMode('table')}
+              title="Vista tabla"
+            >
+              <LayoutList className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'timeline' ? 'secondary' : 'ghost'}
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => handleViewMode('timeline')}
+              title="Vista timeline"
+            >
+              <Clock className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -155,8 +188,12 @@ export default function History() {
         </Card>
       )}
 
-      {/* Timeline */}
-      <LogTimeline actionFilter={actionFilter} dateFrom={dateFrom} dateTo={dateTo} />
+      {/* Content based on view mode */}
+      {viewMode === 'table' ? (
+        <LogTable actionFilter={actionFilter} dateFrom={dateFrom} dateTo={dateTo} />
+      ) : (
+        <LogTimeline actionFilter={actionFilter} dateFrom={dateFrom} dateTo={dateTo} />
+      )}
     </div>
   )
 }

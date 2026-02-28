@@ -50,13 +50,34 @@ export function StockSummary() {
     const totalProducts = products.length
 
     // Count products with low stock (below min_stock_ml but > 0)
-    const lowStockCount = inventory.filter(item => {
-      const minStock = item.min_stock_ml ?? 0
-      return item.quantity_ml > 0 && minStock > 0 && item.quantity_ml < minStock
-    }).length
+    // Deduplicate by product_id to avoid counting same product at multiple locations
+    const lowStockProductIds = new Set(
+      inventory
+        .filter(item => {
+          const minStock = item.min_stock_ml ?? 0
+          return item.quantity_ml > 0 && minStock > 0 && item.quantity_ml < minStock
+        })
+        .map(item => item.product_id)
+    )
+    const lowStockCount = lowStockProductIds.size
 
-    // Count products with zero stock
-    const outOfStockCount = inventory.filter(item => item.quantity_ml === 0).length
+    // Count unique products with zero stock
+    // Deduplicate by product_id to avoid counting same product at multiple locations
+    const outOfStockProductIds = new Set(
+      inventory
+        .filter(item => item.quantity_ml === 0)
+        .map(item => item.product_id)
+    )
+    // Remove products that have stock in at least one location (when viewing all)
+    const productsWithStock = new Set(
+      inventory
+        .filter(item => item.quantity_ml > 0)
+        .map(item => item.product_id)
+    )
+    for (const id of productsWithStock) {
+      outOfStockProductIds.delete(id)
+    }
+    const outOfStockCount = outOfStockProductIds.size
 
     // Use triggered alerts count from alert_configs table
     const alertsCount = triggeredAlerts?.length ?? 0
