@@ -1,6 +1,7 @@
 import { Fragment, useMemo, useState } from 'react'
 import { Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { MultiSelect } from '@/components/ui/multi-select'
 import { StockIndicator } from './StockIndicator'
 import { useInventory, useProducts } from '@/hooks/useInventory'
 import { LOCATION_NAMES, type LocationType } from '@/types'
@@ -133,12 +134,6 @@ export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
       : <ArrowDown className="ml-1 h-3 w-3" />
   }
 
-  const toggleCategory = (cat: string) => {
-    setSelectedCategories(prev =>
-      prev.includes(cat) ? prev.filter(x => x !== cat) : [...prev, cat]
-    )
-  }
-
   const getBottles = (ml: number, formatMl: number) => {
     return (ml / formatMl).toFixed(1)
   }
@@ -187,26 +182,17 @@ export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
 
   return (
     <>
-      {/* Category chips */}
-      <div className="flex flex-wrap gap-1.5 items-center mb-3">
-        <span className="text-xs text-muted-foreground font-medium mr-1">Categoria:</span>
-        <Badge
-          variant={selectedCategories.length === 0 ? 'default' : 'outline'}
-          className="cursor-pointer select-none text-xs"
-          onClick={() => setSelectedCategories([])}
-        >
-          Todas
-        </Badge>
-        {allCategories.map((cat) => (
-          <Badge
-            key={cat}
-            variant={selectedCategories.includes(cat) ? 'default' : 'outline'}
-            className="cursor-pointer select-none text-xs"
-            onClick={() => toggleCategory(cat)}
-          >
-            {cat}
-          </Badge>
-        ))}
+      {/* Category filter */}
+      <div className="flex items-center gap-2 mb-3">
+        <MultiSelect
+          options={allCategories}
+          selected={selectedCategories}
+          onChange={setSelectedCategories}
+          placeholder="Todas las categorías"
+          searchPlaceholder="Buscar categoría..."
+          countLabel="categorías"
+          className="w-[220px]"
+        />
       </div>
 
       {/* Table */}

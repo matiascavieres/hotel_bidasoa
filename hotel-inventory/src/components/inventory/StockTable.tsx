@@ -3,6 +3,7 @@ import { Plus, Edit2, Loader2, ArrowUpDown, ArrowUp, ArrowDown, LayoutList, Layo
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { MultiSelect } from '@/components/ui/multi-select'
 import { StockIndicator } from './StockIndicator'
 import { EditQuantityModal } from './EditQuantityModal'
 import { useAuth } from '@/context/AuthContext'
@@ -175,18 +176,6 @@ export function StockTable({
       : <ArrowDown className="ml-1 h-3 w-3" />
   }
 
-  const toggleCategory = (cat: string) => {
-    setSelectedCategories(prev =>
-      prev.includes(cat) ? prev.filter(x => x !== cat) : [...prev, cat]
-    )
-  }
-
-  const toggleEstado = (estado: string) => {
-    setSelectedEstados(prev =>
-      prev.includes(estado) ? prev.filter(x => x !== estado) : [...prev, estado]
-    )
-  }
-
   const getBottles = (ml: number, formatMl: number) => {
     return (ml / formatMl).toFixed(1)
   }
@@ -209,52 +198,26 @@ export function StockTable({
 
   return (
     <>
-      {/* Filter Chips + View Toggle */}
-      <div className="flex items-start justify-between gap-2 mb-3">
-        <div className="space-y-2 flex-1 min-w-0">
-          {/* Category chips */}
-          <div className="flex flex-wrap gap-1.5 items-center">
-            <span className="text-xs text-muted-foreground font-medium mr-1">Categoria:</span>
-            <Badge
-              variant={selectedCategories.length === 0 ? 'default' : 'outline'}
-              className="cursor-pointer select-none text-xs"
-              onClick={() => setSelectedCategories([])}
-            >
-              Todas
-            </Badge>
-            {allCategories.map((cat) => (
-              <Badge
-                key={cat}
-                variant={selectedCategories.includes(cat) ? 'default' : 'outline'}
-                className="cursor-pointer select-none text-xs"
-                onClick={() => toggleCategory(cat)}
-              >
-                {cat}
-              </Badge>
-            ))}
-          </div>
-
-          {/* Estado chips */}
-          <div className="flex flex-wrap gap-1.5 items-center">
-            <span className="text-xs text-muted-foreground font-medium mr-1">Estado:</span>
-            <Badge
-              variant={selectedEstados.length === 0 ? 'default' : 'outline'}
-              className="cursor-pointer select-none text-xs"
-              onClick={() => setSelectedEstados([])}
-            >
-              Todos
-            </Badge>
-            {['OK', 'Stock Bajo', 'Sin Stock'].map((estado) => (
-              <Badge
-                key={estado}
-                variant={selectedEstados.includes(estado) ? 'default' : 'outline'}
-                className="cursor-pointer select-none text-xs"
-                onClick={() => toggleEstado(estado)}
-              >
-                {estado}
-              </Badge>
-            ))}
-          </div>
+      {/* Filters + View Toggle */}
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
+          <MultiSelect
+            options={allCategories}
+            selected={selectedCategories}
+            onChange={setSelectedCategories}
+            placeholder="Todas las categorías"
+            searchPlaceholder="Buscar categoría..."
+            countLabel="categorías"
+            className="w-[200px]"
+          />
+          <MultiSelect
+            options={['OK', 'Stock Bajo', 'Sin Stock']}
+            selected={selectedEstados}
+            onChange={setSelectedEstados}
+            placeholder="Todos los estados"
+            countLabel="estados"
+            className="w-[190px]"
+          />
         </div>
 
         {/* View toggle */}

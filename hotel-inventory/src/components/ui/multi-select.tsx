@@ -12,6 +12,8 @@ interface MultiSelectProps {
   selected: string[]
   onChange: (selected: string[]) => void
   placeholder?: string
+  searchPlaceholder?: string
+  countLabel?: string
   className?: string
 }
 
@@ -20,6 +22,8 @@ export function MultiSelect({
   selected,
   onChange,
   placeholder = 'Seleccionar...',
+  searchPlaceholder = 'Buscar...',
+  countLabel = 'seleccionados',
   className,
 }: MultiSelectProps) {
   const [open, setOpen] = useState(false)
@@ -54,38 +58,40 @@ export function MultiSelect({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn('justify-between font-normal', className)}
+          className={cn('justify-between font-normal h-8 text-xs', className)}
         >
           <span className="truncate">
             {selected.length === 0
               ? placeholder
               : selected.length === 1
                 ? selected[0]
-                : `${selected.length} grupos seleccionados`}
+                : `${selected.length} ${countLabel}`}
           </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[280px] p-0" align="start">
-        <div className="p-2 border-b">
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              className="w-full rounded-md border border-input bg-background px-7 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
-              placeholder="Buscar grupo..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            {search && (
-              <button
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                onClick={() => setSearch('')}
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
+      <PopoverContent className="w-[250px] p-0" align="start">
+        {options.length > 5 && (
+          <div className="p-2 border-b">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <input
+                className="w-full rounded-md border border-input bg-background px-7 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
+                placeholder={searchPlaceholder}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {search && (
+                <button
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setSearch('')}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
         <div className="px-2 py-1.5 border-b">
           <button
             className="text-xs text-primary hover:underline"
@@ -127,7 +133,7 @@ export function MultiSelect({
             ))}
             {selected.length > 3 && (
               <Badge variant="secondary" className="text-xs">
-                +{selected.length - 3} mas
+                +{selected.length - 3} más
               </Badge>
             )}
           </div>

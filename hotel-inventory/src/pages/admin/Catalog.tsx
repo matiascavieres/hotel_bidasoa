@@ -3,6 +3,7 @@ import { Plus, Edit2, Upload, Search, Loader2, LayoutList, LayoutGrid, ScanBarco
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { MultiSelect } from '@/components/ui/multi-select'
 import { Input } from '@/components/ui/input'
 import {
   Dialog,
@@ -83,12 +84,6 @@ export default function AdminCatalog() {
       (products as Product[]).map(p => p.category?.name || 'Sin categoria')
     )].sort()
   }, [products])
-
-  const toggleCategory = (cat: string) => {
-    setSelectedCategories(prev =>
-      prev.includes(cat) ? prev.filter(x => x !== cat) : [...prev, cat]
-    )
-  }
 
   const filteredProducts = (products || []).filter((product) => {
     const p = product as Product
@@ -417,26 +412,17 @@ export default function AdminCatalog() {
         </div>
       </div>
 
-      {/* Category filter chips */}
-      <div className="flex flex-wrap gap-1.5 items-center">
-        <span className="text-xs text-muted-foreground font-medium mr-1">Categoria:</span>
-        <Badge
-          variant={selectedCategories.length === 0 ? 'default' : 'outline'}
-          className="cursor-pointer select-none text-xs"
-          onClick={() => setSelectedCategories([])}
-        >
-          Todas
-        </Badge>
-        {allCategoryNames.map((cat) => (
-          <Badge
-            key={cat}
-            variant={selectedCategories.includes(cat) ? 'default' : 'outline'}
-            className="cursor-pointer select-none text-xs"
-            onClick={() => toggleCategory(cat)}
-          >
-            {cat}
-          </Badge>
-        ))}
+      {/* Category filter */}
+      <div className="flex items-center gap-2">
+        <MultiSelect
+          options={allCategoryNames}
+          selected={selectedCategories}
+          onChange={setSelectedCategories}
+          placeholder="Todas las categorías"
+          searchPlaceholder="Buscar categoría..."
+          countLabel="categorías"
+          className="w-[220px]"
+        />
       </div>
 
       {/* List view */}
