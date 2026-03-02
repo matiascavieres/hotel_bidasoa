@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Edit2, UserX, UserCheck, Loader2 } from 'lucide-react'
+import { Plus, Edit2, UserX, UserCheck, Loader2, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -21,18 +21,22 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
-import { useUsers, useCreateUser, useUpdateUser, useToggleUserActive } from '@/hooks/useUsers'
+import { useUsers, useCreateUser, useUpdateUser, useToggleUserActive, useDeleteUser } from '@/hooks/useUsers'
+import { useAuth } from '@/context/AuthContext'
 import { ROLE_NAMES, LOCATION_NAMES, type UserRole, type LocationType, type User } from '@/types'
 
 export default function AdminUsers() {
   const { toast } = useToast()
+  const { profile } = useAuth()
   const { data: users, isLoading, error } = useUsers()
   const createUserMutation = useCreateUser()
   const updateUserMutation = useUpdateUser()
   const toggleActiveMutation = useToggleUserActive()
+  const deleteUserMutation = useDeleteUser()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [deletingUser, setDeletingUser] = useState<User | null>(null)
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -131,6 +135,24 @@ export default function AdminUsers() {
     }
   }
 
+  const handleDelete = async () => {
+    if (!deletingUser) return
+    try {
+      await deleteUserMutation.mutateAsync(deletingUser.id)
+      toast({
+        title: 'Usuario eliminado',
+        description: `${deletingUser.full_name} ha sido eliminado permanentemente`,
+      })
+      setDeletingUser(null)
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Error al eliminar usuario',
+        variant: 'destructive',
+      })
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -209,6 +231,15 @@ export default function AdminUsers() {
                       <UserCheck className="h-4 w-4 text-success" />
                     )}
                   </Button>
+                  {user.id !== profile?.id && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setDeletingUser(user)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -221,6 +252,32 @@ export default function AdminUsers() {
           </Card>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deletingUser} onOpenChange={(open) => { if (!open) setDeletingUser(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Eliminar usuario</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de eliminar a <strong>{deletingUser?.full_name}</strong> ({deletingUser?.email})?
+              Esta acción es permanente y no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingUser(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleteUserMutation.isPending}
+            >
+              {deleteUserMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* User Form Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>

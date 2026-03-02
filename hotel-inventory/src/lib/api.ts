@@ -83,6 +83,14 @@ export async function updateUserProfile(
   return data
 }
 
+export async function deleteUserProfile(userId: string) {
+  const { error } = await supabase.rpc('admin_delete_user' as never, {
+    target_user_id: userId,
+  } as never)
+
+  if (error) throw error
+}
+
 // Product management
 export async function createProduct(product: {
   code: string

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { createUserWithProfile, updateUserProfile } from '@/lib/api'
+import { createUserWithProfile, updateUserProfile, deleteUserProfile } from '@/lib/api'
 import type { User, UserRole, LocationType } from '@/types'
 
 export function useUsers() {
@@ -81,6 +81,19 @@ export function useToggleUserActive() {
 
       if (error) throw error
       return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+  })
+}
+
+export function useDeleteUser() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      return deleteUserProfile(userId)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
