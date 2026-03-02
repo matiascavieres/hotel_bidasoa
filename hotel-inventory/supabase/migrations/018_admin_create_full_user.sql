@@ -40,7 +40,7 @@ BEGIN
         aud, role, instance_id,
         confirmation_token, recovery_token,
         email_change, email_change_token_new, email_change_token_current,
-        phone, phone_change, phone_change_token,
+        phone_change, phone_change_token,
         reauthentication_token, email_change_confirm_status,
         is_sso_user
     ) VALUES (
@@ -57,7 +57,7 @@ BEGIN
         '00000000-0000-0000-0000-000000000000'::UUID,
         '', '',       -- confirmation_token, recovery_token
         '', '', '',   -- email_change, email_change_token_new, email_change_token_current
-        '', '', '',   -- phone, phone_change, phone_change_token
+        '', '',       -- phone_change, phone_change_token (phone left NULL - has UNIQUE constraint)
         '',           -- reauthentication_token
         0,            -- email_change_confirm_status
         false         -- is_sso_user
