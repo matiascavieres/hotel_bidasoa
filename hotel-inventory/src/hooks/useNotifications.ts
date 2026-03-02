@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { supabase, createRealtimeChannel } from '@/lib/supabase'
-import type { LogAction, LocationType } from '@/types'
+import type { LogAction } from '@/types'
 
 export interface Notification {
   id: string
