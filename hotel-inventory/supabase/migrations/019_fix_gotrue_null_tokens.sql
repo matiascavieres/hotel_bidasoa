@@ -1,6 +1,37 @@
--- Migration 018: Server-side user creation to avoid admin session switch
--- The old approach used supabase.auth.signUp() which changes the admin's session
--- to the new user. This RPC creates the user entirely server-side.
+-- Migration 019: Fix GoTrue 500 "Database error querying schema"
+-- GoTrue (Go) cannot scan NULL into string fields. Token columns in auth.users
+-- must be empty strings '', not NULL.
+-- Reference: https://github.com/supabase/auth/issues/1940
+
+-- ============================================================
+-- PART 1: Fix existing NULL token columns in auth.users
+-- This is the immediate fix for the 500 error on signInWithPassword
+-- ============================================================
+
+UPDATE auth.users SET
+    confirmation_token = COALESCE(confirmation_token, ''),
+    recovery_token = COALESCE(recovery_token, ''),
+    email_change_token_new = COALESCE(email_change_token_new, ''),
+    email_change = COALESCE(email_change, ''),
+    email_change_token_current = COALESCE(email_change_token_current, ''),
+    phone = COALESCE(phone, ''),
+    phone_change = COALESCE(phone_change, ''),
+    phone_change_token = COALESCE(phone_change_token, ''),
+    reauthentication_token = COALESCE(reauthentication_token, '')
+WHERE confirmation_token IS NULL
+   OR recovery_token IS NULL
+   OR email_change_token_new IS NULL
+   OR email_change IS NULL
+   OR email_change_token_current IS NULL
+   OR phone IS NULL
+   OR phone_change IS NULL
+   OR phone_change_token IS NULL
+   OR reauthentication_token IS NULL;
+
+-- ============================================================
+-- PART 2: Patch admin_create_full_user to include all required columns
+-- Prevents future users from having NULL token fields
+-- ============================================================
 
 CREATE OR REPLACE FUNCTION admin_create_full_user(
     user_email TEXT,
@@ -32,12 +63,12 @@ BEGIN
     new_user_id := gen_random_uuid();
 
     -- Create auth user with ALL required columns (no NULLs for string fields)
-    -- GoTrue (Go) cannot scan NULL into string fields
     INSERT INTO auth.users (
         id, email, encrypted_password,
         email_confirmed_at, created_at, updated_at,
         raw_app_meta_data, raw_user_meta_data,
         aud, role, instance_id,
+        -- Token columns must be '' not NULL for GoTrue Go scanner
         confirmation_token, recovery_token,
         email_change, email_change_token_new, email_change_token_current,
         phone, phone_change, phone_change_token,
@@ -47,7 +78,7 @@ BEGIN
         new_user_id,
         user_email,
         crypt(user_password, gen_salt('bf')),
-        NOW(),  -- email pre-confirmed so they can login immediately
+        NOW(),  -- email pre-confirmed
         NOW(),
         NOW(),
         '{"provider":"email","providers":["email"]}'::jsonb,
@@ -92,3 +123,17 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 GRANT EXECUTE ON FUNCTION admin_create_full_user TO authenticated;
+
+-- ============================================================
+-- PART 3: Harden SECURITY DEFINER functions with explicit search_path
+-- Prevents search_path injection attacks
+-- ============================================================
+
+ALTER FUNCTION get_user_role() SET search_path = public;
+ALTER FUNCTION get_user_location() SET search_path = public;
+ALTER FUNCTION handle_new_user() SET search_path = public, auth;
+ALTER FUNCTION admin_create_full_user(TEXT, TEXT, TEXT, user_role, location_type) SET search_path = public, auth, extensions;
+ALTER FUNCTION admin_delete_user(UUID) SET search_path = public, auth;
+ALTER FUNCTION admin_update_user_email(UUID, TEXT) SET search_path = public, auth;
+ALTER FUNCTION admin_reset_user_password(UUID, TEXT) SET search_path = public, auth;
+ALTER FUNCTION admin_create_user_profile(UUID, TEXT, TEXT, user_role, location_type) SET search_path = public, auth;
