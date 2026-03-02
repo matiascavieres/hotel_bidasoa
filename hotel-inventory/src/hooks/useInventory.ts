@@ -221,3 +221,29 @@ export function useUpdateProduct() {
     },
   })
 }
+
+export function useCreateMissingInventory() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (items: Array<{ product_id: string; location: LocationType }>) => {
+      const rows = items.map(item => ({
+        product_id: item.product_id,
+        location: item.location,
+        quantity_ml: 0,
+        min_stock_ml: 0,
+      }))
+
+      const { data, error } = await supabase
+        .from('inventory')
+        .upsert(rows, { onConflict: 'product_id,location' })
+        .select()
+
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory'] })
+    },
+  })
+}

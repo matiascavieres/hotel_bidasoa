@@ -12,6 +12,7 @@ export interface WineImportRow {
 
 export interface WineImportResult {
   products: WineImportRow[]
+  skippedProducts: string[]
   warnings: string[]
 }
 
@@ -61,10 +62,15 @@ function getRowValue(row: Record<string, unknown>, ...keys: string[]): unknown {
 /**
  * Parse a wine CSV file and map rows to product data.
  * Expected CSV columns: nombre, cepa, valor_venta_bruto
+ *
+ * When existingProducts is provided, wines that already exist (matched by
+ * normalized name) are skipped and new codes continue from the highest
+ * existing VINO-XXX number.
  */
 export function parseWineCSV(
   fileData: ArrayBuffer,
-  categories: Category[]
+  categories: Category[],
+  existingProducts?: Array<{ code: string; name: string }>
 ): WineImportResult {
   const workbook = XLSX.read(fileData, { type: 'array' })
   const sheet = workbook.Sheets[workbook.SheetNames[0]]
@@ -72,10 +78,24 @@ export function parseWineCSV(
 
   const warnings: string[] = []
   const products: WineImportRow[] = []
+  const skippedProducts: string[] = []
 
   if (rows.length === 0) {
     warnings.push('El archivo no contiene filas de datos')
-    return { products, warnings }
+    return { products, skippedProducts, warnings }
+  }
+
+  // Build lookup of existing product names (normalized)
+  const existingNameSet = new Set<string>()
+  let maxVinoCode = 0
+  if (existingProducts) {
+    for (const p of existingProducts) {
+      existingNameSet.add(normalizeKey(p.name))
+      const match = p.code.match(/^VINO-(\d+)$/)
+      if (match) {
+        maxVinoCode = Math.max(maxVinoCode, parseInt(match[1], 10))
+      }
+    }
   }
 
   // Debug: show detected columns
@@ -96,6 +116,12 @@ export function parseWineCSV(
 
     if (!nombre) {
       warnings.push(`Fila ${rowNum}: nombre vacío, omitida`)
+      return
+    }
+
+    // Skip wines that already exist in the system
+    if (existingNameSet.has(normalizeKey(nombre))) {
+      skippedProducts.push(nombre)
       return
     }
 
@@ -129,15 +155,15 @@ export function parseWineCSV(
     })
   })
 
-  // Assign sequential codes: VINO-001, VINO-002, ...
+  // Assign sequential codes continuing from the highest existing VINO-XXX
   products.forEach((p, i) => {
-    p.code = `VINO-${String(i + 1).padStart(3, '0')}`
+    p.code = `VINO-${String(maxVinoCode + i + 1).padStart(3, '0')}`
   })
 
   // Remove the debug column warning if parsing was successful
-  if (products.length > 0) {
+  if (products.length > 0 || skippedProducts.length > 0) {
     warnings.shift() // remove "Columnas detectadas" message
   }
 
-  return { products, warnings }
+  return { products, skippedProducts, warnings }
 }

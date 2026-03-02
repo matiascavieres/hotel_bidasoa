@@ -21,11 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import { useProducts, useCategories, useCreateProduct, useUpdateProduct } from '@/hooks/useInventory'
 import { useCreateLog } from '@/hooks/useLogs'
 import { useAuth } from '@/context/AuthContext'
 import { BarcodeScanner } from '@/components/ui/barcode-scanner'
+import { CatalogStockCoverage } from '@/components/inventory/CatalogStockCoverage'
 import { supabase } from '@/lib/supabase'
 import { useQueryClient } from '@tanstack/react-query'
 import { parseWineCSV, type WineImportResult } from '@/utils/importWines'
@@ -228,7 +230,11 @@ export default function AdminCatalog() {
 
     try {
       const buffer = await file.arrayBuffer()
-      const result = parseWineCSV(buffer, categories)
+      const existingProducts = (products || []).map(p => ({
+        code: (p as Product).code,
+        name: (p as Product).name,
+      }))
+      const result = parseWineCSV(buffer, categories, existingProducts)
       setImportPreview(result)
     } catch (err) {
       toast({
@@ -362,7 +368,7 @@ export default function AdminCatalog() {
         <div>
           <h1 className="text-2xl font-bold">Catalogo de Productos</h1>
           <p className="text-muted-foreground">
-            {filteredProducts.length} de {products?.length || 0} productos en el catalogo
+            {products?.length || 0} productos en el catalogo
           </p>
         </div>
         <div className="flex gap-2">
@@ -379,118 +385,131 @@ export default function AdminCatalog() {
         </div>
       </div>
 
-      {/* Search + View Toggle */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar producto..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <Button
-            variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => { setViewMode('list'); localStorage.setItem('catalog-view-mode', 'list') }}
-            title="Vista lista"
-          >
-            <LayoutList className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => { setViewMode('grid'); localStorage.setItem('catalog-view-mode', 'grid') }}
-            title="Vista cuadrícula"
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+      <Tabs defaultValue="productos">
+        <TabsList>
+          <TabsTrigger value="productos">Productos</TabsTrigger>
+          <TabsTrigger value="cobertura">Cobertura Stock</TabsTrigger>
+        </TabsList>
 
-      {/* Category filter */}
-      <div className="flex items-center gap-2">
-        <MultiSelect
-          options={allCategoryNames}
-          selected={selectedCategories}
-          onChange={setSelectedCategories}
-          placeholder="Todas las categorías"
-          searchPlaceholder="Buscar categoría..."
-          countLabel="categorías"
-          className="w-[220px]"
-        />
-      </div>
+        <TabsContent value="productos" className="space-y-4 mt-4">
+          {/* Search + View Toggle */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Buscar producto..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <Button
+                variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => { setViewMode('list'); localStorage.setItem('catalog-view-mode', 'list') }}
+                title="Vista lista"
+              >
+                <LayoutList className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => { setViewMode('grid'); localStorage.setItem('catalog-view-mode', 'grid') }}
+                title="Vista cuadrícula"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
 
-      {/* List view */}
-      {viewMode === 'list' && (
-        <div className="space-y-3">
-          {filteredProducts.map((product) => (
-            <Card key={product.id}>
-              <CardContent className="flex items-center justify-between p-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium">{product.name}</p>
-                    <Badge variant="outline">{product.category?.name || 'Sin categoria'}</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {product.code} • {product.format_ml}ml
-                    {product.sale_price && ` • $${product.sale_price.toLocaleString()}`}
-                  </p>
-                </div>
-                {isAdmin && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleOpenProductModal(product)}
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+          {/* Category filter */}
+          <div className="flex items-center gap-2">
+            <MultiSelect
+              options={allCategoryNames}
+              selected={selectedCategories}
+              onChange={setSelectedCategories}
+              placeholder="Todas las categorías"
+              searchPlaceholder="Buscar categoría..."
+              countLabel="categorías"
+              className="w-[220px]"
+            />
+          </div>
 
-      {/* Grid view */}
-      {viewMode === 'grid' && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {filteredProducts.map((product) => (
-            <Card
-              key={product.id}
-              className={isAdmin ? "cursor-pointer hover:bg-muted/30 transition-colors" : ""}
-              onClick={isAdmin ? () => handleOpenProductModal(product) : undefined}
-            >
-              <CardContent className="p-3 space-y-2">
-                <div className="flex items-start justify-between">
-                  <Badge variant="outline" className="text-[10px]">
-                    {product.category?.name || 'Sin cat.'}
-                  </Badge>
-                  {isAdmin && <Edit2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-                </div>
-                <p className="font-medium text-sm leading-tight">{product.name}</p>
-                <div className="text-xs text-muted-foreground space-y-0.5">
-                  <p>{product.code}</p>
-                  <p>{product.format_ml}ml</p>
-                  {product.sale_price && (
-                    <p className="font-medium text-foreground">${product.sale_price.toLocaleString()}</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+          {/* List view */}
+          {viewMode === 'list' && (
+            <div className="space-y-3">
+              {filteredProducts.map((product) => (
+                <Card key={product.id}>
+                  <CardContent className="flex items-center justify-between p-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{product.name}</p>
+                        <Badge variant="outline">{product.category?.name || 'Sin categoria'}</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {product.code} • {product.format_ml}ml
+                        {product.sale_price && ` • $${product.sale_price.toLocaleString()}`}
+                      </p>
+                    </div>
+                    {isAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleOpenProductModal(product)}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
 
-      {filteredProducts.length === 0 && (
-        <div className="py-8 text-center text-muted-foreground">
-          No se encontraron productos
-        </div>
-      )}
+          {/* Grid view */}
+          {viewMode === 'grid' && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {filteredProducts.map((product) => (
+                <Card
+                  key={product.id}
+                  className={isAdmin ? "cursor-pointer hover:bg-muted/30 transition-colors" : ""}
+                  onClick={isAdmin ? () => handleOpenProductModal(product) : undefined}
+                >
+                  <CardContent className="p-3 space-y-2">
+                    <div className="flex items-start justify-between">
+                      <Badge variant="outline" className="text-[10px]">
+                        {product.category?.name || 'Sin cat.'}
+                      </Badge>
+                      {isAdmin && <Edit2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                    </div>
+                    <p className="font-medium text-sm leading-tight">{product.name}</p>
+                    <div className="text-xs text-muted-foreground space-y-0.5">
+                      <p>{product.code}</p>
+                      <p>{product.format_ml}ml</p>
+                      {product.sale_price && (
+                        <p className="font-medium text-foreground">${product.sale_price.toLocaleString()}</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {filteredProducts.length === 0 && (
+            <div className="py-8 text-center text-muted-foreground">
+              No se encontraron productos
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="cobertura" className="mt-4">
+          <CatalogStockCoverage />
+        </TabsContent>
+      </Tabs>
 
       {/* Product Form Modal */}
       <Dialog open={isProductModalOpen} onOpenChange={setIsProductModalOpen}>
@@ -669,6 +688,23 @@ export default function AdminCatalog() {
                     </p>
                   )}
                 </div>
+
+                {/* Skipped (already existing) products */}
+                {importPreview.skippedProducts.length > 0 && (
+                  <div className="rounded-md border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-900/20 p-3">
+                    <div className="flex items-center gap-1 mb-1">
+                      <CheckCircle2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <span className="text-sm font-medium text-blue-800 dark:text-blue-400">
+                        {importPreview.skippedProducts.length} productos ya existentes (se omitiran)
+                      </span>
+                    </div>
+                    <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-0.5 max-h-32 overflow-y-auto">
+                      {importPreview.skippedProducts.map((name, i) => (
+                        <li key={i}>{name}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 {/* Warnings */}
                 {importPreview.warnings.length > 0 && (
