@@ -15,7 +15,6 @@ export default function ChangePassword() {
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
-    currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   })
@@ -46,43 +45,30 @@ export default function ChangePassword() {
     setIsLoading(true)
 
     try {
-      // Verify current password by attempting sign in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: profile?.email || '',
-        password: formData.currentPassword,
-      })
-
-      if (signInError) {
-        toast({
-          title: 'Error',
-          description: 'La contrasena actual es incorrecta',
-          variant: 'destructive',
-        })
-        setIsLoading(false)
-        return
-      }
-
-      // Update password
+      // Update password via Supabase Auth (user is already authenticated)
       const { error: updateError } = await supabase.auth.updateUser({
         password: formData.newPassword,
       })
 
       if (updateError) throw updateError
 
-      // Clear must_change_password flag
+      // Clear must_change_password flag using RPC (bypasses RLS reliably)
       if (profile?.must_change_password) {
-        const { error: flagError } = await supabase
-          .from('users')
-          .update({ must_change_password: false })
-          .eq('id', profile.id)
+        console.log('[ChangePassword] Clearing must_change_password via RPC...')
+        const { error: rpcError } = await supabase.rpc('clear_must_change_password' as never)
 
-        if (flagError) {
-          console.error('[ChangePassword] Error clearing must_change_password:', flagError)
-          // Fallback: try RPC approach
-          const { error: rpcError } = await supabase.rpc('clear_must_change_password' as never)
-          if (rpcError) {
-            console.error('[ChangePassword] RPC fallback also failed:', rpcError)
+        if (rpcError) {
+          console.error('[ChangePassword] RPC clear_must_change_password failed:', rpcError)
+          // Fallback: try direct update
+          const { error: directError } = await supabase
+            .from('users')
+            .update({ must_change_password: false })
+            .eq('id', profile.id)
+          if (directError) {
+            console.error('[ChangePassword] Direct update also failed:', directError)
           }
+        } else {
+          console.log('[ChangePassword] must_change_password cleared successfully')
         }
 
         await refreshProfile()
@@ -93,7 +79,7 @@ export default function ChangePassword() {
         description: 'Tu contrasena ha sido cambiada exitosamente',
       })
 
-      setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+      setFormData({ newPassword: '', confirmPassword: '' })
       navigate('/dashboard')
     } catch (err) {
       toast({
@@ -140,27 +126,11 @@ export default function ChangePassword() {
             Nueva contrasena
           </CardTitle>
           <CardDescription>
-            Ingresa tu contrasena actual y la nueva contrasena
+            Ingresa tu nueva contrasena
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="currentPassword">
-                {isForced ? 'Contrasena proporcionada' : 'Contrasena actual'}
-              </Label>
-              <Input
-                id="currentPassword"
-                type="password"
-                value={formData.currentPassword}
-                onChange={(e) =>
-                  setFormData({ ...formData, currentPassword: e.target.value })
-                }
-                required
-                disabled={isLoading}
-              />
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="newPassword">Nueva contrasena</Label>
               <Input
