@@ -132,6 +132,15 @@ export default function Login() {
                 'Iniciar sesion'
               )}
             </Button>
+
+            <div className="text-center">
+              <Link
+                to="/olvide-contrasena"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ¿Olvidaste tu contrasena?
+              </Link>
+            </div>
           </form>
         </CardContent>
       </Card>

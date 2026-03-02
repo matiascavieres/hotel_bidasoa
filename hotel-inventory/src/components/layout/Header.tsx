@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Menu, LogOut, User, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Menu, LogOut, User, ChevronLeft, ChevronRight, Lock } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
 import { NotificationBell } from './NotificationBell'
@@ -21,6 +22,7 @@ interface HeaderProps {
 }
 
 export function Header({ sidebarCollapsed, onToggleSidebar }: HeaderProps) {
+  const navigate = useNavigate()
   const { profile, signOut } = useAuth()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
@@ -111,9 +113,9 @@ export function Header({ sidebarCollapsed, onToggleSidebar }: HeaderProps) {
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              <span>Perfil</span>
+            <DropdownMenuItem onClick={() => navigate('/cambiar-contrasena')}>
+              <Lock className="mr-2 h-4 w-4" />
+              <span>Cambiar contrasena</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

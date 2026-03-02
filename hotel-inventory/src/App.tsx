@@ -23,6 +23,8 @@ import NewInbound from '@/pages/NewInbound'
 import AdminRecipes from '@/pages/admin/Recipes'
 import AdminSettings from '@/pages/admin/Settings'
 import Help from '@/pages/Help'
+import ChangePassword from '@/pages/ChangePassword'
+import ForgotPassword from '@/pages/ForgotPassword'
 import type { UserRole } from '@/types'
 
 const queryClient = new QueryClient({
@@ -117,6 +119,16 @@ function AppRoutes() {
         }
       />
 
+      {/* Forgot password (public) */}
+      <Route
+        path="/olvide-contrasena"
+        element={
+          <PublicRoute>
+            <ForgotPassword />
+          </PublicRoute>
+        }
+      />
+
       {/* Protected routes with layout */}
       <Route
         element={
@@ -171,6 +183,7 @@ function AppRoutes() {
           }
         />
         <Route path="/menu" element={<MoreMenu />} />
+        <Route path="/cambiar-contrasena" element={<ChangePassword />} />
 
         {/* Admin routes */}
         <Route

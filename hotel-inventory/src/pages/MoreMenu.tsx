@@ -13,6 +13,7 @@ import {
   Download,
   UtensilsCrossed,
   HelpCircle,
+  Lock,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -87,6 +88,12 @@ export default function MoreMenu() {
       href: '/admin/configuracion',
       icon: Settings,
       show: isAdmin,
+    },
+    {
+      label: 'Cambiar contrasena',
+      href: '/cambiar-contrasena',
+      icon: Lock,
+      show: true,
     },
     {
       label: 'Ayuda',

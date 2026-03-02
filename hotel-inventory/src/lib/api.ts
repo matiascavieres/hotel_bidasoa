@@ -91,6 +91,24 @@ export async function deleteUserProfile(userId: string) {
   if (error) throw error
 }
 
+export async function updateUserEmail(userId: string, newEmail: string) {
+  const { error } = await supabase.rpc('admin_update_user_email' as never, {
+    target_user_id: userId,
+    new_email: newEmail,
+  } as never)
+
+  if (error) throw error
+}
+
+export async function resetUserPassword(userId: string, newPassword: string) {
+  const { error } = await supabase.rpc('admin_reset_user_password' as never, {
+    target_user_id: userId,
+    new_password: newPassword,
+  } as never)
+
+  if (error) throw error
+}
+
 // Product management
 export async function createProduct(product: {
   code: string

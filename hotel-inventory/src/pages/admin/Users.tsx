@@ -23,6 +23,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { useUsers, useCreateUser, useUpdateUser, useToggleUserActive, useDeleteUser } from '@/hooks/useUsers'
 import { useAuth } from '@/context/AuthContext'
+import { updateUserEmail, resetUserPassword } from '@/lib/api'
 import { ROLE_NAMES, LOCATION_NAMES, type UserRole, type LocationType, type User } from '@/types'
 
 export default function AdminUsers() {
@@ -71,7 +72,7 @@ export default function AdminUsers() {
   const handleSubmit = async () => {
     try {
       if (editingUser) {
-        // Update existing user
+        // Update existing user profile
         await updateUserMutation.mutateAsync({
           userId: editingUser.id,
           updates: {
@@ -80,6 +81,25 @@ export default function AdminUsers() {
             location: formData.location || null,
           },
         })
+
+        // If email changed, update it via RPC
+        if (formData.email !== editingUser.email) {
+          await updateUserEmail(editingUser.id, formData.email)
+        }
+
+        // If password provided, reset it via RPC
+        if (formData.password) {
+          if (formData.password.length < 6) {
+            toast({
+              title: 'Error',
+              description: 'La contrasena debe tener al menos 6 caracteres',
+              variant: 'destructive',
+            })
+            return
+          }
+          await resetUserPassword(editingUser.id, formData.password)
+        }
+
         toast({
           title: 'Usuario actualizado',
           description: `${formData.full_name} ha sido actualizado`,
@@ -311,34 +331,29 @@ export default function AdminUsers() {
                 id="email"
                 type="email"
                 value={formData.email}
-                disabled={!!editingUser}
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
                 }
               />
-              {editingUser && (
-                <p className="text-xs text-muted-foreground">
-                  El email no se puede modificar
-                </p>
-              )}
             </div>
 
-            {!editingUser && (
-              <div className="space-y-2">
-                <Label htmlFor="password">Contrasena</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
-                />
-                <p className="text-xs text-muted-foreground">
-                  Minimo 6 caracteres
-                </p>
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor="password">
+                {editingUser ? 'Nueva contrasena' : 'Contrasena'}
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                value={formData.password}
+                placeholder={editingUser ? 'Dejar vacio para mantener' : ''}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Minimo 6 caracteres
+              </p>
+            </div>
 
             <div className="space-y-2">
               <Label>Rol</Label>

@@ -9,12 +9,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ScanBarcode, Camera, X, ImageIcon } from 'lucide-react'
+import { Camera, X, ImageIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { BarcodeScanner } from '@/components/ui/barcode-scanner'
 import {
   Select,
   SelectContent,
@@ -69,7 +68,6 @@ export function EditQuantityModal({
   const { data: categories } = useCategories()
   const { data: inventoryMode } = useInventoryMode()
   const [unit, setUnit] = useState<'ml' | 'bottles'>('bottles')
-  const [isScannerOpen, setIsScannerOpen] = useState(false)
 
   const isAdmin = profile?.role === 'admin'
   const canEditCode = isAdmin || (profile?.role === 'bartender' && inventoryMode?.enabled)
@@ -382,23 +380,10 @@ export function EditQuantityModal({
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">Codigo</Label>
-                    <div className="flex gap-1">
-                      <Input
-                        value={productCode}
-                        onChange={(e) => setProductCode(e.target.value)}
-                        className="flex-1"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className="shrink-0 h-9 w-9"
-                        onClick={() => setIsScannerOpen(true)}
-                        title="Escanear codigo de barras"
-                      >
-                        <ScanBarcode className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                    <Input
+                      value={productCode}
+                      onChange={(e) => setProductCode(e.target.value)}
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Categoria</Label>
@@ -463,24 +448,11 @@ export function EditQuantityModal({
                 {imageSection}
                 <div className="space-y-1">
                   <Label className="text-xs">Codigo de barras</Label>
-                  <div className="flex gap-1">
-                    <Input
-                      value={productCode}
-                      onChange={(e) => setProductCode(e.target.value)}
-                      className="flex-1"
-                      placeholder="Escanear o escribir codigo"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="shrink-0 h-9 w-9"
-                      onClick={() => setIsScannerOpen(true)}
-                      title="Escanear codigo de barras"
-                    >
-                      <ScanBarcode className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+                  <Input
+                    value={productCode}
+                    onChange={(e) => setProductCode(e.target.value)}
+                    placeholder="Escribir codigo"
+                  />
                 </div>
               </div>
             ) : (
@@ -586,14 +558,6 @@ export function EditQuantityModal({
       </DialogContent>
     </Dialog>
 
-    {/* Barcode Scanner */}
-    {canEditCode && (
-      <BarcodeScanner
-        open={isScannerOpen}
-        onClose={() => setIsScannerOpen(false)}
-        onScan={(code) => setProductCode(code)}
-      />
-    )}
     </>
   )
 }
