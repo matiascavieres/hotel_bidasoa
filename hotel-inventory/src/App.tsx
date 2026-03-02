@@ -64,7 +64,8 @@ function ProtectedRoute({
   }
 
   // Force password change on first login
-  if (profile?.must_change_password && location.pathname !== '/cambiar-contraseña') {
+  const decodedPath = decodeURIComponent(location.pathname)
+  if (profile?.must_change_password && decodedPath !== '/cambiar-contraseña') {
     console.log('[PROTECTED] → redirigiendo a /cambiar-contraseña (must_change_password)')
     return <Navigate to="/cambiar-contraseña" replace />
   }
