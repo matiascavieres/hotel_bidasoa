@@ -90,7 +90,7 @@ export async function sendNotificationEmail(
   }
 
   try {
-    const result = await withRetry(async () => {
+    await withRetry(async () => {
       const { data: result, error } = await supabase.functions.invoke('send-email', {
         body: {
           type,
