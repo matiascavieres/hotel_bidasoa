@@ -57,6 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null)
 
       if (session?.user) {
+        // Marcar como loading hasta que el perfil se cargue
+        setLoading(true)
         // Usar setTimeout para evitar bloqueo de Supabase auth
         setTimeout(async () => {
           if (!isMounted) return

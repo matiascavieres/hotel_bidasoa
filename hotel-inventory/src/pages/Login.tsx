@@ -1,11 +1,10 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Loader2, ArrowLeft } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
-import { getDefaultRoute } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -25,8 +24,7 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>
 
 export default function Login() {
-  const navigate = useNavigate()
-  const { signIn, profile } = useAuth()
+  const { signIn } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -59,9 +57,9 @@ export default function Login() {
       return
     }
 
-    // Navigate to default route based on role
-    const defaultRoute = profile?.role ? getDefaultRoute(profile.role) : '/dashboard'
-    navigate(defaultRoute)
+    // No navegar manualmente - PublicRoute redirigira automaticamente
+    // cuando el AuthContext termine de cargar el perfil.
+    // Mantener isLoading=true para mostrar spinner mientras carga.
   }
 
   return (
