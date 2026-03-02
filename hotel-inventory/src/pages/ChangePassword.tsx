@@ -71,10 +71,20 @@ export default function ChangePassword() {
 
       // Clear must_change_password flag
       if (profile?.must_change_password) {
-        await supabase
+        const { error: flagError } = await supabase
           .from('users')
           .update({ must_change_password: false })
           .eq('id', profile.id)
+
+        if (flagError) {
+          console.error('[ChangePassword] Error clearing must_change_password:', flagError)
+          // Fallback: try RPC approach
+          const { error: rpcError } = await supabase.rpc('clear_must_change_password' as never)
+          if (rpcError) {
+            console.error('[ChangePassword] RPC fallback also failed:', rpcError)
+          }
+        }
+
         await refreshProfile()
       }
 

@@ -138,3 +138,21 @@ ALTER FUNCTION admin_delete_user(UUID) SET search_path = public, auth;
 ALTER FUNCTION admin_update_user_email(UUID, TEXT) SET search_path = public, auth;
 ALTER FUNCTION admin_reset_user_password(UUID, TEXT) SET search_path = public, auth;
 ALTER FUNCTION admin_create_user_profile(UUID, TEXT, TEXT, user_role, location_type) SET search_path = public, auth;
+
+-- ============================================================
+-- PART 4: RPC to clear must_change_password flag for own user
+-- Users may not be able to update their own profile via direct UPDATE
+-- depending on RLS policy evaluation order. This RPC bypasses RLS.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION clear_must_change_password()
+RETURNS void AS $$
+BEGIN
+    UPDATE users
+    SET must_change_password = false, updated_at = NOW()
+    WHERE id = auth.uid();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+ALTER FUNCTION clear_must_change_password() SET search_path = public;
+GRANT EXECUTE ON FUNCTION clear_must_change_password TO authenticated;
