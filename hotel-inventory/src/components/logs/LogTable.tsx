@@ -190,11 +190,11 @@ export function LogTable({ actionFilter, dateFrom, dateTo }: LogTableProps) {
                       <span className="text-xs text-muted-foreground">
                         {formatStockAdjustment(details)}
                       </span>
-                      {details.notes && (
+                      {details.notes ? (
                         <p className="text-xs text-muted-foreground/70 italic mt-0.5">
-                          {details.notes as string}
+                          {String(details.notes)}
                         </p>
-                      )}
+                      ) : null}
                     </div>
                   ) : null}
                 </td>

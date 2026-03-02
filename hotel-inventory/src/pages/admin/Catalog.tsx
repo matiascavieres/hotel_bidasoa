@@ -24,7 +24,6 @@ import { useToast } from '@/hooks/use-toast'
 import { useProducts, useCategories, useCreateProduct, useUpdateProduct } from '@/hooks/useInventory'
 import { useCreateLog } from '@/hooks/useLogs'
 import { useAuth } from '@/context/AuthContext'
-import { useInventoryMode } from '@/hooks/useAppSettings'
 import { BarcodeScanner } from '@/components/ui/barcode-scanner'
 
 interface Product {
@@ -40,7 +39,6 @@ interface Product {
 export default function AdminCatalog() {
   const { toast } = useToast()
   const { profile } = useAuth()
-  const { data: inventoryMode } = useInventoryMode()
   const createLog = useCreateLog()
   const isAdmin = profile?.role === 'admin'
   const [searchQuery, setSearchQuery] = useState('')
