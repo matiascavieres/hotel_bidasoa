@@ -47,7 +47,10 @@ export function StockSummary() {
       }
     }
 
-    const totalProducts = products.length
+    // Total: distinct products that have inventory in selected location(s)
+    // When viewing all → distinct products from inventory (not catalog total)
+    const uniqueProductIds = new Set(inventory.map(item => item.product_id))
+    const totalProducts = uniqueProductIds.size
 
     // Count products with low stock (below min_stock_ml but > 0)
     // Deduplicate by product_id to avoid counting same product at multiple locations
@@ -95,7 +98,9 @@ export function StockSummary() {
       title: 'Total Productos',
       value: stats.totalProducts.toString(),
       icon: Package,
-      description: 'en catálogo',
+      description: locationFilter
+        ? `en ${LOCATION_NAMES[locationFilter]}`
+        : 'con inventario',
       href: '/stock',
       statusFilter: undefined as string | undefined,
     },
