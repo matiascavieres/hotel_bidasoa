@@ -222,6 +222,25 @@ export function useUpdateProduct() {
   })
 }
 
+export function useDeleteProduct() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (productId: string) => {
+      const { error } = await supabase
+        .from('products')
+        .update({ is_active: false })
+        .eq('id', productId)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.invalidateQueries({ queryKey: ['inventory'] })
+    },
+  })
+}
+
 export function useCreateMissingInventory() {
   const queryClient = useQueryClient()
 

@@ -1,16 +1,27 @@
 import { useState, useMemo } from 'react'
-import { Plus, Edit2, Loader2, ArrowUpDown, ArrowUp, ArrowDown, LayoutList, LayoutGrid } from 'lucide-react'
+import { Plus, Edit2, Trash2, Loader2, ArrowUpDown, ArrowUp, ArrowDown, LayoutList, LayoutGrid } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { MultiSelect } from '@/components/ui/multi-select'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { StockIndicator } from './StockIndicator'
 import { EditQuantityModal } from './EditQuantityModal'
 import { useAuth } from '@/context/AuthContext'
-import { useInventory, useProducts } from '@/hooks/useInventory'
+import { useInventory, useProducts, useDeleteProduct } from '@/hooks/useInventory'
 import { useInventoryMode } from '@/hooks/useAppSettings'
 import { canManageInventory } from '@/lib/auth'
 import { useProductImageUrl } from '@/hooks/useProductImage'
+import { useToast } from '@/hooks/use-toast'
 import type { LocationType } from '@/types'
 
 function ProductThumbnail({ imagePath, size = 32 }: { imagePath: string | null; size?: number }) {
@@ -89,6 +100,9 @@ export function StockTable({
   const isLoading = invLoading || prodLoading
   const error = invError || prodError
   const [editingProduct, setEditingProduct] = useState<EditingProduct | null>(null)
+  const [deletingProduct, setDeletingProduct] = useState<EditingProduct | null>(null)
+  const deleteProduct = useDeleteProduct()
+  const { toast } = useToast()
   const [sortField, setSortField] = useState<StockSortField>('name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
@@ -363,6 +377,16 @@ export function StockTable({
                               <Edit2 className="h-4 w-4" />
                             </Button>
                           )}
+                          {canEdit && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => setDeletingProduct(product)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -416,6 +440,16 @@ export function StockTable({
                           onClick={() => setEditingProduct(product)}
                         >
                           <Edit2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canEdit && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setDeletingProduct(product)}
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
                     </div>
@@ -476,6 +510,16 @@ export function StockTable({
                       <Edit2 className="h-3.5 w-3.5" />
                     </Button>
                   )}
+                  {canEdit && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setDeletingProduct(product)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -498,6 +542,47 @@ export function StockTable({
           onClose={() => setEditingProduct(null)}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingProduct} onOpenChange={(open) => !open && setDeletingProduct(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminará <span className="font-semibold text-foreground">{deletingProduct?.name}</span> del
+              catálogo y de todas las ubicaciones de stock. Esta acción se puede revertir desde la base de datos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deletingProduct) {
+                  deleteProduct.mutate(deletingProduct.id, {
+                    onSuccess: () => {
+                      toast({
+                        title: 'Producto eliminado',
+                        description: `${deletingProduct.name} fue eliminado del catálogo`,
+                      })
+                      setDeletingProduct(null)
+                    },
+                    onError: (err) => {
+                      toast({
+                        title: 'Error',
+                        description: err.message || 'No se pudo eliminar el producto',
+                        variant: 'destructive',
+                      })
+                    },
+                  })
+                }
+              }}
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
