@@ -47,7 +47,10 @@ function ProtectedRoute({
   const { user, profile, loading } = useAuth()
   const location = useLocation()
 
+  console.log('[PROTECTED]', location.pathname, '| loading:', loading, '| user:', user?.email || null, '| profile:', profile?.role || null, '| must_change_pw:', profile?.must_change_password)
+
   if (loading) {
+    console.log('[PROTECTED] → mostrando spinner')
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -56,18 +59,22 @@ function ProtectedRoute({
   }
 
   if (!user) {
+    console.log('[PROTECTED] → redirigiendo a /login (no user)')
     return <Navigate to="/login" replace />
   }
 
   // Force password change on first login
   if (profile?.must_change_password && location.pathname !== '/cambiar-contraseña') {
+    console.log('[PROTECTED] → redirigiendo a /cambiar-contraseña (must_change_password)')
     return <Navigate to="/cambiar-contraseña" replace />
   }
 
   if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
+    console.log('[PROTECTED] → redirigiendo a /dashboard (role no permitido)')
     return <Navigate to="/dashboard" replace />
   }
 
+  console.log('[PROTECTED] → renderizando children')
   return <>{children}</>
 }
 
@@ -75,7 +82,10 @@ function ProtectedRoute({
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
 
+  console.log('[PUBLIC] loading:', loading, '| user:', user?.email || null)
+
   if (loading) {
+    console.log('[PUBLIC] → mostrando spinner')
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -84,9 +94,11 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (user) {
+    console.log('[PUBLIC] → redirigiendo a /dashboard (user autenticado)')
     return <Navigate to="/dashboard" replace />
   }
 
+  console.log('[PUBLIC] → renderizando children (login form)')
   return <>{children}</>
 }
 

@@ -22,6 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const fetchProfile = async (userId: string): Promise<User | null> => {
+    console.log('[AUTH] fetchProfile llamado para userId:', userId)
     try {
       const { data, error } = await supabase
         .from('users')
@@ -29,10 +30,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('id', userId)
         .single()
 
-      if (error) return null
+      if (error) {
+        console.error('[AUTH] fetchProfile ERROR:', error.message, error.code, error.details)
+        return null
+      }
 
+      console.log('[AUTH] fetchProfile OK, profile:', { id: data.id, role: data.role, must_change_password: data.must_change_password, full_name: data.full_name })
       return data as User
-    } catch {
+    } catch (e) {
+      console.error('[AUTH] fetchProfile CATCH:', e)
       return null
     }
   }
@@ -50,8 +56,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      console.log('[AUTH] onAuthStateChange evento:', _event, 'session?', !!session, 'user?', session?.user?.email)
 
-      if (!isMounted) return
+      if (!isMounted) {
+        console.log('[AUTH] onAuthStateChange: componente desmontado, ignorando')
+        return
+      }
 
       setSession(session)
       setUser(session?.user ?? null)
@@ -59,22 +69,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         // Marcar como loading hasta que el perfil se cargue
         setLoading(true)
+        console.log('[AUTH] loading=true, iniciando fetchProfile via setTimeout...')
         // Usar setTimeout para evitar bloqueo de Supabase auth
         setTimeout(async () => {
-          if (!isMounted) return
+          if (!isMounted) {
+            console.log('[AUTH] setTimeout: componente desmontado, abortando')
+            return
+          }
+          console.log('[AUTH] setTimeout ejecutado, llamando fetchProfile...')
           const userProfile = await fetchProfile(session.user.id)
           if (isMounted) {
+            console.log('[AUTH] setProfile:', userProfile ? 'OK' : 'NULL', 'setLoading(false)')
             setProfile(userProfile)
             setLoading(false)
           }
         }, 0)
       } else {
+        console.log('[AUTH] No hay sesion, limpiando estado')
         setProfile(null)
         setLoading(false)
       }
     })
 
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('[AUTH] getSession inicial:', session ? 'sesion encontrada' : 'sin sesion')
       if (!session && isMounted) {
         setLoading(false)
       }

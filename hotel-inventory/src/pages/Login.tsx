@@ -37,12 +37,14 @@ export default function Login() {
   })
 
   const onSubmit = async (data: LoginFormData) => {
+    console.log('[LOGIN] Submit con email:', data.email)
     setIsLoading(true)
     setError(null)
 
     const { error } = await signIn(data.email, data.password)
 
     if (error) {
+      console.error('[LOGIN] Error de signIn:', error.message)
       // Provide more specific error messages
       if (error.message.includes('Email not confirmed')) {
         setError('Debes confirmar tu email antes de iniciar sesión. Revisa tu bandeja de entrada.')
@@ -57,6 +59,7 @@ export default function Login() {
       return
     }
 
+    console.log('[LOGIN] signIn exitoso, esperando que AuthContext cargue perfil y PublicRoute redirija...')
     // No navegar manualmente - PublicRoute redirigira automaticamente
     // cuando el AuthContext termine de cargar el perfil.
     // Mantener isLoading=true para mostrar spinner mientras carga.
