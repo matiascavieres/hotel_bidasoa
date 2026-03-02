@@ -31,7 +31,7 @@ export function useInventoryMode() {
         throw error
       }
 
-      return (data as AppSetting).value
+      return (data as unknown as AppSetting).value
     },
     staleTime: 30_000, // Refresh every 30s to catch admin toggles
   })
@@ -46,7 +46,7 @@ export function useToggleInventoryMode() {
       const { error } = await supabase
         .from('app_settings')
         .update({
-          value: { enabled } as unknown as Record<string, unknown>,
+          value: { enabled } as unknown as import('@/types/database').Json,
           updated_by: user?.id,
         })
         .eq('key', 'inventory_mode')
