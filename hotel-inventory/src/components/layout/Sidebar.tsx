@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
+import { useInventoryMode } from '@/hooks/useAppSettings'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 
@@ -118,10 +119,14 @@ const adminNavItems: NavItem[] = [
 
 export function Sidebar({ collapsed = false }: SidebarProps) {
   const { profile } = useAuth()
+  const { data: inventoryMode } = useInventoryMode()
   const userRole = profile?.role
+  const isBartenderInventory = userRole === 'bartender' && inventoryMode?.enabled
 
   const filterByRole = (items: NavItem[]) =>
     items.filter((item) => {
+      // Special case: bartenders see Catalogo when inventory mode is active
+      if (item.href === '/admin/catalogo' && isBartenderInventory) return true
       if (!item.roles) return true
       if (!userRole) return false
       return item.roles.includes(userRole)

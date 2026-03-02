@@ -63,6 +63,14 @@ function formatItemsList(details: Record<string, unknown>): string {
   return items.map(i => `${i.name} x${i.quantity} ${i.unit}`).join(', ')
 }
 
+function formatStockAdjustment(details: Record<string, unknown>): string {
+  const prevBottles = details.previous_bottles as number | undefined
+  const newBottles = details.new_bottles as number | undefined
+  const productName = details.product_name as string | undefined
+  if (prevBottles === undefined || newBottles === undefined) return ''
+  return `${productName || 'Producto'}: ${prevBottles} → ${newBottles} bot.`
+}
+
 function formatStockMovements(details: Record<string, unknown>): string {
   const movements = details.stock_movements as StockMovement[] | undefined
   if (!movements || movements.length === 0) return ''
@@ -173,9 +181,13 @@ export function LogTable({ actionFilter, dateFrom, dateTo }: LogTableProps) {
                   )}
                 </td>
                 <td className="px-3 py-2">
-                  {movements && (
+                  {movements ? (
                     <span className="text-xs text-muted-foreground">{movements}</span>
-                  )}
+                  ) : log.action === 'stock_adjustment' ? (
+                    <span className="text-xs text-muted-foreground">
+                      {formatStockAdjustment(details)}
+                    </span>
+                  ) : null}
                 </td>
               </tr>
             )

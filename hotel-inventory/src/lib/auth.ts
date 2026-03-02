@@ -105,8 +105,10 @@ export function canManageUsers(role: UserRole): boolean {
   return role === 'admin'
 }
 
-export function canManageProducts(role: UserRole): boolean {
-  return role === 'admin'
+export function canManageProducts(role: UserRole, inventoryModeEnabled?: boolean): boolean {
+  if (role === 'admin') return true
+  if (role === 'bartender' && inventoryModeEnabled) return true
+  return false
 }
 
 export function getDefaultRoute(role: UserRole): string {

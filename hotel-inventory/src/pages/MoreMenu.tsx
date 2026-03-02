@@ -17,12 +17,15 @@ import {
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { useAuth } from '@/context/AuthContext'
+import { useInventoryMode } from '@/hooks/useAppSettings'
 import { LOCATION_NAMES, ROLE_NAMES } from '@/types'
 
 export default function MoreMenu() {
   const { profile, signOut } = useAuth()
 
   const isAdmin = profile?.role === 'admin'
+  const { data: inventoryMode } = useInventoryMode()
+  const isBartenderInventory = profile?.role === 'bartender' && inventoryMode?.enabled
 
   const menuItems = [
     {
@@ -65,7 +68,7 @@ export default function MoreMenu() {
       label: 'Catalogo de Productos',
       href: '/admin/catalogo',
       icon: BookOpen,
-      show: isAdmin,
+      show: isAdmin || isBartenderInventory,
     },
     {
       label: 'Recetas',

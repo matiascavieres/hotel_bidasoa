@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useProducts, useCategories, useCreateProduct, useUpdateProduct } from '@/hooks/useInventory'
 import { useCreateLog } from '@/hooks/useLogs'
 import { useAuth } from '@/context/AuthContext'
+import { useInventoryMode } from '@/hooks/useAppSettings'
 import { BarcodeScanner } from '@/components/ui/barcode-scanner'
 
 interface Product {
@@ -39,7 +40,9 @@ interface Product {
 export default function AdminCatalog() {
   const { toast } = useToast()
   const { profile } = useAuth()
+  const { data: inventoryMode } = useInventoryMode()
   const createLog = useCreateLog()
+  const isAdmin = profile?.role === 'admin'
   const [searchQuery, setSearchQuery] = useState('')
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
@@ -246,10 +249,12 @@ export default function AdminCatalog() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setIsImportModalOpen(true)}>
-            <Upload className="mr-2 h-4 w-4" />
-            Importar CSV
-          </Button>
+          {isAdmin && (
+            <Button variant="outline" onClick={() => setIsImportModalOpen(true)}>
+              <Upload className="mr-2 h-4 w-4" />
+              Importar CSV
+            </Button>
+          )}
           <Button onClick={() => handleOpenProductModal()}>
             <Plus className="mr-2 h-4 w-4" />
             Nuevo Producto
@@ -328,13 +333,15 @@ export default function AdminCatalog() {
                     {product.sale_price && ` • $${product.sale_price.toLocaleString()}`}
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleOpenProductModal(product)}
-                >
-                  <Edit2 className="h-4 w-4" />
-                </Button>
+                {isAdmin && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleOpenProductModal(product)}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -347,15 +354,15 @@ export default function AdminCatalog() {
           {filteredProducts.map((product) => (
             <Card
               key={product.id}
-              className="cursor-pointer hover:bg-muted/30 transition-colors"
-              onClick={() => handleOpenProductModal(product)}
+              className={isAdmin ? "cursor-pointer hover:bg-muted/30 transition-colors" : ""}
+              onClick={isAdmin ? () => handleOpenProductModal(product) : undefined}
             >
               <CardContent className="p-3 space-y-2">
                 <div className="flex items-start justify-between">
                   <Badge variant="outline" className="text-[10px]">
                     {product.category?.name || 'Sin cat.'}
                   </Badge>
-                  <Edit2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  {isAdmin && <Edit2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
                 </div>
                 <p className="font-medium text-sm leading-tight">{product.name}</p>
                 <div className="text-xs text-muted-foreground space-y-0.5">

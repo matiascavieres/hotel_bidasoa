@@ -27,6 +27,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useUpdateInventory, useCategories, useUpdateProduct } from '@/hooks/useInventory'
 import { useCreateLog } from '@/hooks/useLogs'
 import { useAuth } from '@/context/AuthContext'
+import { useInventoryMode } from '@/hooks/useAppSettings'
 
 const editSchema = z.object({
   quantity: z.number().min(0, 'La cantidad no puede ser negativa'),
@@ -64,12 +65,14 @@ export function EditQuantityModal({
   const updateProduct = useUpdateProduct()
   const createLog = useCreateLog()
   const { data: categories } = useCategories()
+  const { data: inventoryMode } = useInventoryMode()
   const [unit, setUnit] = useState<'ml' | 'bottles'>('bottles')
   const [isScannerOpen, setIsScannerOpen] = useState(false)
 
   const isAdmin = profile?.role === 'admin'
+  const canEditCode = isAdmin || (profile?.role === 'bartender' && inventoryMode?.enabled)
 
-  // Product edit state (admin only)
+  // Product edit state
   const [productCode, setProductCode] = useState(product.code)
   const [productName, setProductName] = useState(product.name)
   const [productCategoryId, setProductCategoryId] = useState(product.category_id || '')
@@ -105,14 +108,17 @@ export function EditQuantityModal({
 
   // Check if product fields changed
   const hasProductChanges = () => {
-    if (!isAdmin) return false
-    return (
-      productCode !== product.code ||
-      productName !== product.name ||
-      (product.category_id && productCategoryId !== product.category_id) ||
-      productFormatMl !== product.format_ml ||
-      (productSalePrice || 0) !== (product.sale_price || 0)
-    )
+    if (isAdmin) {
+      return (
+        productCode !== product.code ||
+        productName !== product.name ||
+        (product.category_id && productCategoryId !== product.category_id) ||
+        productFormatMl !== product.format_ml ||
+        (productSalePrice || 0) !== (product.sale_price || 0)
+      )
+    }
+    // Bartender can only change code
+    return productCode !== product.code
   }
 
   const onSubmit = async (data: EditFormData) => {
@@ -123,28 +129,42 @@ export function EditQuantityModal({
 
     if (isMutating) return
 
-    // Save product changes if admin made edits
-    if (isAdmin && hasProductChanges() && productCategoryId) {
+    // Save product changes if user made edits
+    if (canEditCode && hasProductChanges()) {
       const changes: Record<string, { from: unknown; to: unknown }> = {}
       if (product.code !== productCode) changes.code = { from: product.code, to: productCode }
-      if (product.name !== productName) changes.name = { from: product.name, to: productName }
-      if (product.category_id && productCategoryId !== product.category_id) {
-        const oldCat = product.category
-        const newCat = categories?.find(c => c.id === productCategoryId)?.name || productCategoryId
-        changes.category = { from: oldCat, to: newCat }
+
+      if (isAdmin) {
+        if (product.name !== productName) changes.name = { from: product.name, to: productName }
+        if (product.category_id && productCategoryId !== product.category_id) {
+          const oldCat = product.category
+          const newCat = categories?.find(c => c.id === productCategoryId)?.name || productCategoryId
+          changes.category = { from: oldCat, to: newCat }
+        }
+        if (product.format_ml !== productFormatMl) changes.format_ml = { from: product.format_ml, to: productFormatMl }
+        if ((product.sale_price || 0) !== (productSalePrice || 0)) changes.sale_price = { from: product.sale_price, to: productSalePrice }
       }
-      if (product.format_ml !== productFormatMl) changes.format_ml = { from: product.format_ml, to: productFormatMl }
-      if ((product.sale_price || 0) !== (productSalePrice || 0)) changes.sale_price = { from: product.sale_price, to: productSalePrice }
+
+      const updateData = isAdmin
+        ? {
+            id: product.id,
+            code: productCode,
+            name: productName,
+            categoryId: productCategoryId,
+            formatMl: productFormatMl,
+            salePrice: productSalePrice || undefined,
+          }
+        : {
+            id: product.id,
+            code: productCode,
+            name: product.name,
+            categoryId: product.category_id || '',
+            formatMl: product.format_ml,
+            salePrice: product.sale_price || undefined,
+          }
 
       updateProduct.mutate(
-        {
-          id: product.id,
-          code: productCode,
-          name: productName,
-          categoryId: productCategoryId,
-          formatMl: productFormatMl,
-          salePrice: productSalePrice || undefined,
-        },
+        updateData,
         {
           onSuccess: () => {
             if (profile?.id) {
@@ -154,7 +174,7 @@ export function EditQuantityModal({
                 entityType: 'product',
                 entityId: product.id,
                 details: ({
-                  product_name: productName,
+                  product_name: isAdmin ? productName : product.name,
                   product_code: productCode,
                   changes,
                 }) as unknown as import('@/types/database').Json,
@@ -195,7 +215,7 @@ export function EditQuantityModal({
 
           toast({
             title: 'Stock actualizado',
-            description: `${productName} actualizado a ${quantityMl}ml (${(quantityMl / product.format_ml).toFixed(1)} botellas)`,
+            description: `${product.name} actualizado a ${quantityMl}ml (${(quantityMl / product.format_ml).toFixed(1)} botellas)`,
           })
           onClose()
         },
@@ -215,7 +235,7 @@ export function EditQuantityModal({
   return (
     <>
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[480px] max-h-[85vh] overflow-y-auto top-[5%] translate-y-0 sm:top-[50%] sm:translate-y-[-50%]">
         <DialogHeader>
           <DialogTitle>Editar Stock</DialogTitle>
         </DialogHeader>
@@ -223,7 +243,7 @@ export function EditQuantityModal({
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="grid gap-4 py-4">
 
-            {/* Admin: editable product fields */}
+            {/* Admin: all editable product fields */}
             {isAdmin ? (
               <div className="space-y-3 rounded-lg border p-4">
                 <div className="flex items-center justify-between">
@@ -298,8 +318,45 @@ export function EditQuantityModal({
                   </div>
                 </div>
               </div>
+            ) : canEditCode ? (
+              /* Bartender in inventory mode: read-only info + editable code */
+              <div className="space-y-3 rounded-lg border p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-semibold text-base">{product.name}</p>
+                    <p className="text-sm text-muted-foreground">ID{product.code} • {product.format_ml}ml</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <Badge variant="outline">{product.category}</Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {LOCATION_NAMES[location]}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Codigo de barras</Label>
+                  <div className="flex gap-1">
+                    <Input
+                      value={productCode}
+                      onChange={(e) => setProductCode(e.target.value)}
+                      className="flex-1"
+                      placeholder="Escanear o escribir codigo"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="shrink-0 h-9 w-9"
+                      onClick={() => setIsScannerOpen(true)}
+                      title="Escanear codigo de barras"
+                    >
+                      <ScanBarcode className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
             ) : (
-              /* Non-admin: read-only product info */
+              /* Read-only product info */
               <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -343,7 +400,8 @@ export function EditQuantityModal({
                   type="number"
                   step={unit === 'bottles' ? '0.1' : '1'}
                   {...register('quantity', { valueAsNumber: true })}
-                  className="flex-1"
+                  className="flex-1 text-lg"
+                  autoFocus
                 />
                 <Select
                   value={unit}
@@ -379,7 +437,7 @@ export function EditQuantityModal({
     </Dialog>
 
     {/* Barcode Scanner */}
-    {isAdmin && (
+    {canEditCode && (
       <BarcodeScanner
         open={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
