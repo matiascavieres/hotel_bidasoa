@@ -9,7 +9,21 @@ import { useAuth } from '@/context/AuthContext'
 import { useInventory } from '@/hooks/useInventory'
 import { useInventoryMode } from '@/hooks/useAppSettings'
 import { canManageInventory } from '@/lib/auth'
+import { useProductImageUrl } from '@/hooks/useProductImage'
 import type { LocationType } from '@/types'
+
+function ProductThumbnail({ imagePath, size = 32 }: { imagePath: string | null; size?: number }) {
+  const { signedUrl } = useProductImageUrl(imagePath)
+  if (!signedUrl) return null
+  return (
+    <img
+      src={signedUrl}
+      alt=""
+      className="rounded object-cover shrink-0"
+      style={{ width: size, height: size }}
+    />
+  )
+}
 
 interface StockTableProps {
   location: LocationType
@@ -325,11 +339,14 @@ export function StockTable({
                   {sortedProducts.map((product: EditingProduct) => (
                     <tr key={product.id} className="border-b hover:bg-muted/30">
                       <td className="px-2 py-2">
-                        <div className="min-w-0">
-                          <p className="font-medium truncate">{product.name}</p>
-                          <p className="text-sm text-muted-foreground truncate">
-                            {product.code} • {product.format_ml}ml
-                          </p>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <ProductThumbnail imagePath={product.image_url} size={32} />
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{product.name}</p>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {product.code} • {product.format_ml}ml
+                            </p>
+                          </div>
                         </div>
                       </td>
                       <td className="px-2 py-2 whitespace-nowrap">
@@ -381,14 +398,17 @@ export function StockTable({
               <Card key={product.id}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <p className="font-medium">{product.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {product.code} • {product.format_ml}ml
-                      </p>
-                      <Badge variant="outline" className="mt-1">
-                        {product.category}
-                      </Badge>
+                    <div className="flex items-start gap-2">
+                      <ProductThumbnail imagePath={product.image_url} size={40} />
+                      <div className="space-y-1">
+                        <p className="font-medium">{product.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {product.code} • {product.format_ml}ml
+                        </p>
+                        <Badge variant="outline" className="mt-1">
+                          {product.category}
+                        </Badge>
+                      </div>
                     </div>
                     <StockIndicator
                       current={product.quantity_ml}
@@ -433,6 +453,8 @@ export function StockTable({
           {sortedProducts.map((product: EditingProduct) => (
             <Card key={product.id} className="flex flex-col">
               <CardContent className="p-3 flex flex-col gap-2 h-full">
+                {/* Thumbnail */}
+                <ProductThumbnail imagePath={product.image_url} size={40} />
                 {/* Name + status */}
                 <div className="flex items-start justify-between gap-1">
                   <p className="font-medium text-sm leading-tight line-clamp-2 flex-1">

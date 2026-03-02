@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { Plus, Edit2, Upload, Search, Loader2, LayoutList, LayoutGrid, ScanBarcode } from 'lucide-react'
+import { useState, useMemo, useRef } from 'react'
+import { Plus, Edit2, Upload, Search, Loader2, LayoutList, LayoutGrid, ScanBarcode, FileText, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -25,6 +25,9 @@ import { useProducts, useCategories, useCreateProduct, useUpdateProduct } from '
 import { useCreateLog } from '@/hooks/useLogs'
 import { useAuth } from '@/context/AuthContext'
 import { BarcodeScanner } from '@/components/ui/barcode-scanner'
+import { supabase } from '@/lib/supabase'
+import { useQueryClient } from '@tanstack/react-query'
+import { parseWineCSV, type WineImportResult } from '@/utils/importWines'
 
 interface Product {
   id: string
@@ -58,10 +61,18 @@ export default function AdminCatalog() {
     sale_price: 0,
   })
 
+  const queryClient = useQueryClient()
   const { data: products, isLoading: productsLoading, error: productsError } = useProducts()
   const { data: categories, isLoading: categoriesLoading } = useCategories()
   const createProduct = useCreateProduct()
   const updateProduct = useUpdateProduct()
+
+  // Import state
+  const importFileRef = useRef<HTMLInputElement>(null)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importPreview, setImportPreview] = useState<WineImportResult | null>(null)
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number } | null>(null)
+  const [importDone, setImportDone] = useState<{ success: number; errors: string[] } | null>(null)
 
   const isMutating = createProduct.isPending || updateProduct.isPending
 
@@ -213,12 +224,125 @@ export default function AdminCatalog() {
     }
   }
 
-  const handleImport = () => {
-    toast({
-      title: 'Importacion completada',
-      description: 'Los productos han sido importados exitosamente',
-    })
+  const handleImportFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !categories) return
+    setImportFile(file)
+    setImportDone(null)
+    setImportProgress(null)
+
+    try {
+      const buffer = await file.arrayBuffer()
+      const result = parseWineCSV(buffer, categories)
+      setImportPreview(result)
+    } catch (err) {
+      toast({
+        title: 'Error al leer archivo',
+        description: String(err),
+        variant: 'destructive',
+      })
+      setImportFile(null)
+      setImportPreview(null)
+    }
+  }
+
+  const handleImport = async () => {
+    if (!importPreview || importPreview.products.length === 0) return
+    const products = importPreview.products
+    setImportProgress({ current: 0, total: products.length })
+    setImportDone(null)
+
+    let success = 0
+    const errors: string[] = []
+
+    // Insert products in batches of 20
+    const batchSize = 20
+    for (let i = 0; i < products.length; i += batchSize) {
+      const batch = products.slice(i, i + batchSize)
+      const rows = batch.map(p => ({
+        code: p.code,
+        name: p.name,
+        category_id: p.categoryId,
+        format_ml: p.formatMl,
+        sale_price: p.salePrice || null,
+        is_active: true,
+      }))
+
+      const { data, error } = await supabase
+        .from('products')
+        .insert(rows)
+        .select('id')
+
+      if (error) {
+        errors.push(`Lote ${Math.floor(i / batchSize) + 1}: ${error.message}`)
+      } else {
+        success += data.length
+
+        // Create inventory records (stock=0) in bodega for new products
+        const inventoryRows = data.map((p: { id: string }) => ({
+          product_id: p.id,
+          location: 'bodega' as const,
+          quantity_ml: 0,
+          min_stock_ml: 0,
+        }))
+
+        const { error: invError } = await supabase
+          .from('inventory')
+          .insert(inventoryRows)
+
+        if (invError) {
+          errors.push(`Inventario lote ${Math.floor(i / batchSize) + 1}: ${invError.message}`)
+        }
+      }
+
+      setImportProgress({ current: Math.min(i + batchSize, products.length), total: products.length })
+    }
+
+    // Invalidate queries once at the end
+    queryClient.invalidateQueries({ queryKey: ['products'] })
+    queryClient.invalidateQueries({ queryKey: ['categories'] })
+    queryClient.invalidateQueries({ queryKey: ['inventory'] })
+
+    setImportDone({ success, errors })
+    setImportProgress(null)
+
+    // Log the import
+    if (profile?.id) {
+      createLog.mutate({
+        userId: profile.id,
+        action: 'sales_import' as const,
+        entityType: 'product',
+        entityId: 'bulk_import',
+        details: ({
+          type: 'wine_csv_import',
+          total_products: products.length,
+          success_count: success,
+          error_count: errors.length,
+        }) as unknown as import('@/types/database').Json,
+      })
+    }
+
+    if (errors.length === 0) {
+      toast({
+        title: 'Importación completada',
+        description: `${success} productos importados exitosamente`,
+      })
+    } else {
+      toast({
+        title: 'Importación parcial',
+        description: `${success} importados, ${errors.length} errores`,
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleCloseImport = () => {
     setIsImportModalOpen(false)
+    setImportFile(null)
+    setImportPreview(null)
+    setImportProgress(null)
+    setImportDone(null)
+    if (importFileRef.current) importFileRef.current.value = ''
   }
 
   if (productsLoading || categoriesLoading) {
@@ -498,39 +622,145 @@ export default function AdminCatalog() {
       </Dialog>
 
       {/* Import Modal */}
-      <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
-        <DialogContent>
+      <Dialog open={isImportModalOpen} onOpenChange={(open) => { if (!open) handleCloseImport() }}>
+        <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Importar Productos</DialogTitle>
             <DialogDescription>
-              Sube un archivo CSV o XLSX con los productos a importar
+              Sube un archivo CSV con columnas: nombre, cepa, valor_venta_bruto
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-4">
-            <div className="rounded-lg border-2 border-dashed p-8 text-center">
-              <Upload className="mx-auto h-10 w-10 text-muted-foreground" />
-              <p className="mt-2 text-sm text-muted-foreground">
-                Arrastra un archivo o haz clic para seleccionar
-              </p>
-              <Input
-                type="file"
-                accept=".csv,.xlsx"
-                className="mt-4"
-              />
-            </div>
-            <p className="mt-4 text-sm text-muted-foreground">
-              Formato esperado: Nombre, Tipo, Formato en ml, ID, valor venta
-            </p>
+          <div className="py-4 space-y-4">
+            {/* File input */}
+            {!importDone && (
+              <div className="rounded-lg border-2 border-dashed p-6 text-center">
+                <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Selecciona un archivo CSV o XLSX
+                </p>
+                <Input
+                  ref={importFileRef}
+                  type="file"
+                  accept=".csv,.xlsx"
+                  className="mt-3"
+                  onChange={handleImportFileChange}
+                  disabled={!!importProgress}
+                />
+              </div>
+            )}
+
+            {/* Preview */}
+            {importPreview && !importDone && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{importFile?.name}</span>
+                </div>
+
+                <div className="rounded-md border p-3 space-y-2">
+                  <p className="text-sm font-medium">
+                    {importPreview.products.length} productos listos para importar
+                  </p>
+                  {/* Category summary */}
+                  <div className="flex flex-wrap gap-1">
+                    {[...new Set(importPreview.products.map(p => p.categoryName))].map(cat => {
+                      const count = importPreview.products.filter(p => p.categoryName === cat).length
+                      return (
+                        <Badge key={cat} variant="outline" className="text-xs">
+                          {cat} ({count})
+                        </Badge>
+                      )
+                    })}
+                  </div>
+                  {/* Format summary */}
+                  {importPreview.products.some(p => p.formatMl !== 750) && (
+                    <p className="text-xs text-muted-foreground">
+                      Formatos especiales: {importPreview.products
+                        .filter(p => p.formatMl !== 750)
+                        .map(p => `${p.name} (${p.formatMl}ml)`)
+                        .join(', ')}
+                    </p>
+                  )}
+                </div>
+
+                {/* Warnings */}
+                {importPreview.warnings.length > 0 && (
+                  <div className="rounded-md border border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-900/20 p-3">
+                    <div className="flex items-center gap-1 mb-1">
+                      <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                      <span className="text-sm font-medium text-yellow-800 dark:text-yellow-400">Advertencias</span>
+                    </div>
+                    <ul className="text-xs text-yellow-700 dark:text-yellow-300 space-y-0.5">
+                      {importPreview.warnings.map((w, i) => (
+                        <li key={i}>{w}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Progress bar */}
+            {importProgress && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span>Importando...</span>
+                  <span>{importProgress.current} / {importProgress.total}</span>
+                </div>
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all duration-300"
+                    style={{ width: `${(importProgress.current / importProgress.total) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Done */}
+            {importDone && (
+              <div className="rounded-md border p-4 text-center space-y-2">
+                <CheckCircle2 className="mx-auto h-8 w-8 text-green-600" />
+                <p className="font-medium">Importación finalizada</p>
+                <p className="text-sm text-muted-foreground">
+                  {importDone.success} productos importados con inventario en bodega (stock 0)
+                </p>
+                {importDone.errors.length > 0 && (
+                  <div className="text-left mt-2">
+                    <p className="text-sm font-medium text-destructive">Errores:</p>
+                    <ul className="text-xs text-destructive space-y-0.5">
+                      {importDone.errors.map((e, i) => (
+                        <li key={i}>{e}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsImportModalOpen(false)}>
-              Cancelar
+            <Button variant="outline" onClick={handleCloseImport}>
+              {importDone ? 'Cerrar' : 'Cancelar'}
             </Button>
-            <Button onClick={handleImport}>
-              Importar
-            </Button>
+            {!importDone && (
+              <Button
+                onClick={handleImport}
+                disabled={!importPreview || importPreview.products.length === 0 || !!importProgress}
+              >
+                {importProgress ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Importando...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Importar {importPreview?.products.length || 0} productos
+                  </>
+                )}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
