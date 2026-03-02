@@ -8,6 +8,7 @@ import { StockTable } from '@/components/inventory/StockTable'
 import { StockGeneralView } from '@/components/inventory/StockGeneralView'
 import { ProductSearch } from '@/components/inventory/ProductSearch'
 import { useInventory } from '@/hooks/useInventory'
+import { useRealtimeInventory } from '@/hooks/useRealtime'
 import { LOCATION_NAMES, type LocationType } from '@/types'
 
 function exportStockToCSV(
@@ -86,6 +87,9 @@ type StockTab = 'general' | LocationType
 export default function Stock() {
   const { profile } = useAuth()
   const [searchParams] = useSearchParams()
+
+  // Real-time sync: auto-refresh when any device updates inventory
+  useRealtimeInventory()
 
   const locationParam = searchParams.get('location') as LocationType | null
   const statusParam = searchParams.get('status')

@@ -1,4 +1,5 @@
 import { useAuth } from '@/context/AuthContext'
+import { useRealtimeInventory } from '@/hooks/useRealtime'
 import { StockSummary } from '@/components/dashboard/StockSummary'
 import { PendingRequests } from '@/components/dashboard/PendingRequests'
 import { QuickActions } from '@/components/dashboard/QuickActions'
@@ -7,6 +8,9 @@ import { RecentActivity } from '@/components/dashboard/RecentActivity'
 export default function Dashboard() {
   const { profile } = useAuth()
   const role = profile?.role
+
+  // Real-time sync: auto-refresh when any device updates inventory
+  useRealtimeInventory()
 
   return (
     <div className="space-y-6">

@@ -76,9 +76,34 @@ export function useRealtimeTransfers() {
   }, [queryClient])
 }
 
+export function useRealtimeLogs() {
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    const channel = createRealtimeChannel('logs-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'audit_logs',
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['logs'] })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [queryClient])
+}
+
 // Combined hook for all realtime subscriptions
 export function useRealtimeSubscriptions(location?: string) {
   useRealtimeInventory(location)
   useRealtimeRequests()
   useRealtimeTransfers()
+  useRealtimeLogs()
 }

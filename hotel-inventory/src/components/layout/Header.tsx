@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Menu, LogOut, User, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
+import { NotificationBell } from './NotificationBell'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -73,7 +74,8 @@ export function Header({ sidebarCollapsed, onToggleSidebar }: HeaderProps) {
         )}
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
+        <NotificationBell />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-2">
