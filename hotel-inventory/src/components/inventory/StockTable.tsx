@@ -7,7 +7,7 @@ import { MultiSelect } from '@/components/ui/multi-select'
 import { StockIndicator } from './StockIndicator'
 import { EditQuantityModal } from './EditQuantityModal'
 import { useAuth } from '@/context/AuthContext'
-import { useInventory } from '@/hooks/useInventory'
+import { useInventory, useProducts } from '@/hooks/useInventory'
 import { useInventoryMode } from '@/hooks/useAppSettings'
 import { canManageInventory } from '@/lib/auth'
 import { useProductImageUrl } from '@/hooks/useProductImage'
@@ -84,7 +84,10 @@ export function StockTable({
   initialStatus,
 }: StockTableProps) {
   const { profile } = useAuth()
-  const { data: inventory, isLoading, error } = useInventory(location)
+  const { data: inventory, isLoading: invLoading, error: invError } = useInventory(location)
+  const { data: products, isLoading: prodLoading, error: prodError } = useProducts()
+  const isLoading = invLoading || prodLoading
+  const error = invError || prodError
   const [editingProduct, setEditingProduct] = useState<EditingProduct | null>(null)
   const [sortField, setSortField] = useState<StockSortField>('name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
@@ -104,23 +107,37 @@ export function StockTable({
     localStorage.setItem('stock-view-mode', mode)
   }
 
-  // All products mapped from inventory
+  // All products from catalog, merged with inventory for this location
   const allProducts = useMemo(() => {
-    return (inventory || [])
-      .filter((item: InventoryItem) => item.product !== null)
-      .map((item: InventoryItem) => ({
-        id: item.product!.id,
-        code: item.product!.code,
-        name: item.product!.name,
-        category: item.product!.category?.name || 'Sin categoria',
-        category_id: item.product!.category_id || item.product!.category?.id || '',
-        format_ml: item.product!.format_ml || 750,
-        quantity_ml: item.quantity_ml,
-        min_stock_ml: item.min_stock_ml || 0,
-        sale_price: item.product!.sale_price ?? null,
-        image_url: item.product!.image_url ?? null,
-      }))
-  }, [inventory])
+    if (!products) return []
+
+    // Build inventory lookup by product_id for the current location
+    const invMap = new Map<string, { quantity_ml: number; min_stock_ml: number }>()
+    for (const item of (inventory || []) as InventoryItem[]) {
+      if (item.product_id) {
+        invMap.set(item.product_id, {
+          quantity_ml: item.quantity_ml,
+          min_stock_ml: item.min_stock_ml || 0,
+        })
+      }
+    }
+
+    return products.map((product) => {
+      const inv = invMap.get(product.id)
+      return {
+        id: product.id,
+        code: product.code,
+        name: product.name,
+        category: product.category?.name || 'Sin categoria',
+        category_id: product.category_id || product.category?.id || '',
+        format_ml: product.format_ml || 750,
+        quantity_ml: inv?.quantity_ml ?? 0,
+        min_stock_ml: inv?.min_stock_ml ?? 0,
+        sale_price: product.sale_price ?? null,
+        image_url: product.image_url ?? null,
+      }
+    })
+  }, [products, inventory])
 
   // Unique categories from current data
   const allCategories = useMemo(() => {
