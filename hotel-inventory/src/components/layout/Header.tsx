@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Menu, LogOut, User, ChevronLeft, ChevronRight, Lock } from 'lucide-react'
+import { Menu, LogOut, ChevronLeft, ChevronRight, Lock } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
 import { NotificationBell } from './NotificationBell'
