@@ -9,64 +9,17 @@ export async function createUserWithProfile(
   role: UserRole,
   location: LocationType | null
 ) {
-  // Create auth user
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        full_name: fullName,
-      },
-    },
-  })
+  // Use server-side RPC to create user without switching admin session
+  // This creates auth.users + auth.identities + users profile in one transaction
+  const { data, error } = await supabase.rpc('admin_create_full_user' as never, {
+    user_email: email,
+    user_password: password,
+    user_full_name: fullName,
+    user_role: role,
+    user_location: location,
+  } as never)
 
   if (error) throw error
-
-  if (data.user) {
-    // Small delay to allow the database trigger to run first
-    await new Promise(resolve => setTimeout(resolve, 500))
-
-    // Try using the admin function first (bypasses RLS)
-    // Note: This RPC function may not be in the types but exists in the database
-    const { error: rpcError } = await supabase.rpc('admin_create_user_profile' as never, {
-      user_id: data.user.id,
-      user_email: email,
-      user_full_name: fullName,
-      user_role: role,
-      user_location: location,
-    } as never)
-
-    if (rpcError) {
-      console.warn('RPC failed, trying direct upsert:', rpcError.message)
-
-      // Fallback: try direct upsert (works if RLS allows it)
-      const { error: upsertError } = await supabase
-        .from('users')
-        .upsert({
-          id: data.user.id,
-          email: email,
-          full_name: fullName,
-          role,
-          location,
-          is_active: true,
-          must_change_password: true,
-        }, {
-          onConflict: 'id',
-        })
-
-      if (upsertError) {
-        console.error('Error creating user profile:', upsertError)
-        throw new Error(`No se pudo crear el perfil del usuario. Por favor, crealo manualmente en Supabase con ID: ${data.user.id}`)
-      }
-    } else {
-      // RPC succeeded, now set must_change_password flag
-      await supabase
-        .from('users')
-        .update({ must_change_password: true })
-        .eq('id', data.user.id)
-    }
-  }
-
   return data
 }
 
