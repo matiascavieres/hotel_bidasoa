@@ -132,7 +132,7 @@ GRANT EXECUTE ON FUNCTION admin_create_full_user TO authenticated;
 
 ALTER FUNCTION get_user_role() SET search_path = public;
 ALTER FUNCTION get_user_location() SET search_path = public;
-ALTER FUNCTION handle_new_user() SET search_path = public, auth;
+-- Note: handle_new_user() does not exist in this project (trigger was never created)
 ALTER FUNCTION admin_create_full_user(TEXT, TEXT, TEXT, user_role, location_type) SET search_path = public, auth, extensions;
 ALTER FUNCTION admin_delete_user(UUID) SET search_path = public, auth;
 ALTER FUNCTION admin_update_user_email(UUID, TEXT) SET search_path = public, auth;
