@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Loader2, ArrowLeft, Lock } from 'lucide-react'
+import { Loader2, ArrowLeft, Lock, AlertTriangle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast'
 
 export default function ChangePassword() {
   const navigate = useNavigate()
-  const { profile } = useAuth()
+  const { profile, refreshProfile } = useAuth()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -19,6 +19,8 @@ export default function ChangePassword() {
     newPassword: '',
     confirmPassword: '',
   })
+
+  const isForced = profile?.must_change_password
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -67,13 +69,22 @@ export default function ChangePassword() {
 
       if (updateError) throw updateError
 
+      // Clear must_change_password flag
+      if (profile?.must_change_password) {
+        await supabase
+          .from('users')
+          .update({ must_change_password: false })
+          .eq('id', profile.id)
+        await refreshProfile()
+      }
+
       toast({
         title: 'Contrasena actualizada',
         description: 'Tu contrasena ha sido cambiada exitosamente',
       })
 
       setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' })
-      navigate(-1)
+      navigate('/dashboard')
     } catch (err) {
       toast({
         title: 'Error',
@@ -88,16 +99,29 @@ export default function ChangePassword() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
+        {!isForced && (
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        )}
         <div>
           <h1 className="text-2xl font-bold">Cambiar contrasena</h1>
           <p className="text-muted-foreground">
-            Actualiza tu contrasena de acceso
+            {isForced
+              ? 'Debes cambiar tu contrasena antes de continuar'
+              : 'Actualiza tu contrasena de acceso'}
           </p>
         </div>
       </div>
+
+      {isForced && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+          <AlertTriangle className="h-5 w-5 shrink-0" />
+          <p className="text-sm">
+            Es tu primer inicio de sesion. Por seguridad, debes cambiar la contrasena proporcionada por el administrador.
+          </p>
+        </div>
+      )}
 
       <Card className="max-w-md">
         <CardHeader>
@@ -112,7 +136,9 @@ export default function ChangePassword() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="currentPassword">Contrasena actual</Label>
+              <Label htmlFor="currentPassword">
+                {isForced ? 'Contrasena proporcionada' : 'Contrasena actual'}
+              </Label>
               <Input
                 id="currentPassword"
                 type="password"

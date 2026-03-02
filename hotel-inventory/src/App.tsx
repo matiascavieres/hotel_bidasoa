@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
 import { Toaster } from '@/components/ui/toaster'
@@ -45,6 +45,7 @@ function ProtectedRoute({
   allowedRoles?: UserRole[]
 }) {
   const { user, profile, loading } = useAuth()
+  const location = useLocation()
 
   if (loading) {
     return (
@@ -56,6 +57,11 @@ function ProtectedRoute({
 
   if (!user) {
     return <Navigate to="/login" replace />
+  }
+
+  // Force password change on first login
+  if (profile?.must_change_password && location.pathname !== '/cambiar-contrasena') {
+    return <Navigate to="/cambiar-contrasena" replace />
   }
 
   if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {

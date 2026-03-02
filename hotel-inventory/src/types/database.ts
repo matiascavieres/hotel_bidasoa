@@ -38,6 +38,7 @@ export type Database = {
           role: 'admin' | 'bodeguero' | 'bartender'
           location: 'bodega' | 'bar_casa_sanz' | 'bar_hotel_bidasoa' | null
           is_active: boolean
+          must_change_password: boolean
           created_at: string
           updated_at: string
         }
@@ -48,6 +49,7 @@ export type Database = {
           role?: 'admin' | 'bodeguero' | 'bartender'
           location?: 'bodega' | 'bar_casa_sanz' | 'bar_hotel_bidasoa' | null
           is_active?: boolean
+          must_change_password?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -58,6 +60,7 @@ export type Database = {
           role?: 'admin' | 'bodeguero' | 'bartender'
           location?: 'bodega' | 'bar_casa_sanz' | 'bar_hotel_bidasoa' | null
           is_active?: boolean
+          must_change_password?: boolean
           created_at?: string
           updated_at?: string
         }

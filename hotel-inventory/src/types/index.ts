@@ -37,6 +37,7 @@ export interface User {
   role: UserRole
   location: LocationType | null
   is_active: boolean
+  must_change_password: boolean
   created_at: string
   updated_at: string
 }

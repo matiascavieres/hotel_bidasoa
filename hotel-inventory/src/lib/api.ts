@@ -49,6 +49,7 @@ export async function createUserWithProfile(
           role,
           location,
           is_active: true,
+          must_change_password: true,
         }, {
           onConflict: 'id',
         })
@@ -57,6 +58,12 @@ export async function createUserWithProfile(
         console.error('Error creating user profile:', upsertError)
         throw new Error(`No se pudo crear el perfil del usuario. Por favor, crealo manualmente en Supabase con ID: ${data.user.id}`)
       }
+    } else {
+      // RPC succeeded, now set must_change_password flag
+      await supabase
+        .from('users')
+        .update({ must_change_password: true })
+        .eq('id', data.user.id)
     }
   }
 
