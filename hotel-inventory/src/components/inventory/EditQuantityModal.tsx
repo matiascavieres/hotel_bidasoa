@@ -235,13 +235,13 @@ export function EditQuantityModal({
   return (
     <>
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[480px] max-h-[85vh] overflow-y-auto top-[5%] translate-y-0 sm:top-[50%] sm:translate-y-[-50%]">
+      <DialogContent className="sm:max-w-[480px] max-h-[85vh] overflow-y-auto top-[10%] translate-y-0 sm:top-[50%] sm:translate-y-[-50%]">
         <DialogHeader>
           <DialogTitle>Editar Stock</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-4 pb-8">
 
             {/* Admin: all editable product fields */}
             {isAdmin ? (
