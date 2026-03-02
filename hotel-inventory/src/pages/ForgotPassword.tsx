@@ -57,7 +57,7 @@ export default function ForgotPassword() {
         <Card>
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="text-2xl font-bold">
-              Recuperar contrasena
+              Recuperar contraseña
             </CardTitle>
             <CardDescription>
               {isSent
@@ -74,7 +74,7 @@ export default function ForgotPassword() {
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
                     Si existe una cuenta con el email <strong>{email}</strong>,
-                    recibiras un enlace para restablecer tu contrasena.
+                    recibirás un enlace para restablecer tu contraseña.
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Revisa tu bandeja de entrada y la carpeta de spam.

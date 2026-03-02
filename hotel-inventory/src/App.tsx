@@ -60,8 +60,8 @@ function ProtectedRoute({
   }
 
   // Force password change on first login
-  if (profile?.must_change_password && location.pathname !== '/cambiar-contrasena') {
-    return <Navigate to="/cambiar-contrasena" replace />
+  if (profile?.must_change_password && location.pathname !== '/cambiar-contraseña') {
+    return <Navigate to="/cambiar-contraseña" replace />
   }
 
   if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
@@ -127,7 +127,7 @@ function AppRoutes() {
 
       {/* Forgot password (public) */}
       <Route
-        path="/olvide-contrasena"
+        path="/olvide-contraseña"
         element={
           <PublicRoute>
             <ForgotPassword />
@@ -189,7 +189,7 @@ function AppRoutes() {
           }
         />
         <Route path="/menu" element={<MoreMenu />} />
-        <Route path="/cambiar-contrasena" element={<ChangePassword />} />
+        <Route path="/cambiar-contraseña" element={<ChangePassword />} />
 
         {/* Admin routes */}
         <Route

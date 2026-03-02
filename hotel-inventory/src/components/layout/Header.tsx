@@ -113,9 +113,9 @@ export function Header({ sidebarCollapsed, onToggleSidebar }: HeaderProps) {
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate('/cambiar-contrasena')}>
+            <DropdownMenuItem onClick={() => navigate('/cambiar-contraseña')}>
               <Lock className="mr-2 h-4 w-4" />
-              <span>Cambiar contrasena</span>
+              <span>Cambiar contraseña</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

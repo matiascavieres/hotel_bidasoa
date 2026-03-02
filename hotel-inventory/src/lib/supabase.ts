@@ -4,14 +4,7 @@ import type { Database } from '@/types/database'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// Debug: verificar que las variables de entorno están cargadas
-console.log('[Supabase] URL loaded:', supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'MISSING')
-console.log('[Supabase] Anon Key loaded:', supabaseAnonKey ? `${supabaseAnonKey.substring(0, 20)}...` : 'MISSING')
-
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('[Supabase] CRITICAL: Missing environment variables!')
-  console.error('[Supabase] VITE_SUPABASE_URL:', supabaseUrl)
-  console.error('[Supabase] VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'set' : 'NOT SET')
   throw new Error('Missing Supabase environment variables. Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
 }
 

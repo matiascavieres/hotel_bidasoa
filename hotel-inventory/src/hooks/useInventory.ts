@@ -7,8 +7,6 @@ export function useInventory(location?: LocationType) {
   return useQuery({
     queryKey: ['inventory', location],
     queryFn: async () => {
-      console.log('[useInventory] Fetching inventory for location:', location)
-
       let query = supabase
         .from('inventory')
         .select(`
@@ -25,12 +23,7 @@ export function useInventory(location?: LocationType) {
 
       const { data, error } = await query.order('product_id')
 
-      console.log('[useInventory] Response:', { data, error, count: data?.length })
-
-      if (error) {
-        console.error('[useInventory] Error:', error)
-        throw error
-      }
+      if (error) throw error
       return data
     },
   })

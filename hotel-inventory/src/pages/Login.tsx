@@ -19,7 +19,7 @@ import {
 
 const loginSchema = z.object({
   email: z.string().email('Email invalido'),
-  password: z.string().min(6, 'La contrasena debe tener al menos 6 caracteres'),
+  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
 })
 
 type LoginFormData = z.infer<typeof loginSchema>
@@ -45,16 +45,15 @@ export default function Login() {
     const { error } = await signIn(data.email, data.password)
 
     if (error) {
-      console.error('[Login] Error:', error.message)
       // Provide more specific error messages
       if (error.message.includes('Email not confirmed')) {
-        setError('Debes confirmar tu email antes de iniciar sesion. Revisa tu bandeja de entrada.')
+        setError('Debes confirmar tu email antes de iniciar sesión. Revisa tu bandeja de entrada.')
       } else if (error.message.includes('Invalid login credentials')) {
-        setError('Credenciales invalidas. Verifica tu email y contrasena.')
+        setError('Credenciales inválidas. Verifica tu email y contraseña.')
       } else if (error.message.includes('Invalid API key') || error.message.includes('apikey')) {
-        setError('Error de configuracion: API Key invalida. Contacta al administrador.')
+        setError('Error de configuración: API Key inválida. Contacta al administrador.')
       } else {
-        setError(error.message || 'Error al iniciar sesion. Por favor, intenta de nuevo.')
+        setError(error.message || 'Error al iniciar sesión. Por favor, intenta de nuevo.')
       }
       setIsLoading(false)
       return
@@ -106,7 +105,7 @@ export default function Login() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Contrasena</Label>
+              <Label htmlFor="password">Contraseña</Label>
               <Input
                 id="password"
                 type="password"
@@ -135,10 +134,10 @@ export default function Login() {
 
             <div className="text-center">
               <Link
-                to="/olvide-contrasena"
+                to="/olvide-contraseña"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                ¿Olvidaste tu contrasena?
+                ¿Olvidaste tu contraseña?
               </Link>
             </div>
           </form>

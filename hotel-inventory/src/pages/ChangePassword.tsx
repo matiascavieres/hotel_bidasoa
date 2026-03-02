@@ -27,7 +27,7 @@ export default function ChangePassword() {
     if (formData.newPassword.length < 6) {
       toast({
         title: 'Error',
-        description: 'La nueva contrasena debe tener al menos 6 caracteres',
+        description: 'La nueva contraseña debe tener al menos 6 caracteres',
         variant: 'destructive',
       })
       return
@@ -36,7 +36,7 @@ export default function ChangePassword() {
     if (formData.newPassword !== formData.confirmPassword) {
       toast({
         title: 'Error',
-        description: 'Las contrasenas no coinciden',
+        description: 'Las contraseñas no coinciden',
         variant: 'destructive',
       })
       return
@@ -54,29 +54,22 @@ export default function ChangePassword() {
 
       // Clear must_change_password flag using RPC (bypasses RLS reliably)
       if (profile?.must_change_password) {
-        console.log('[ChangePassword] Clearing must_change_password via RPC...')
         const { error: rpcError } = await supabase.rpc('clear_must_change_password' as never)
 
         if (rpcError) {
-          console.error('[ChangePassword] RPC clear_must_change_password failed:', rpcError)
           // Fallback: try direct update
-          const { error: directError } = await supabase
+          await supabase
             .from('users')
             .update({ must_change_password: false })
             .eq('id', profile.id)
-          if (directError) {
-            console.error('[ChangePassword] Direct update also failed:', directError)
-          }
-        } else {
-          console.log('[ChangePassword] must_change_password cleared successfully')
         }
 
         await refreshProfile()
       }
 
       toast({
-        title: 'Contrasena actualizada',
-        description: 'Tu contrasena ha sido cambiada exitosamente',
+        title: 'Contraseña actualizada',
+        description: 'Tu contraseña ha sido cambiada exitosamente',
       })
 
       setFormData({ newPassword: '', confirmPassword: '' })
@@ -84,7 +77,7 @@ export default function ChangePassword() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Error al cambiar la contrasena',
+        description: err instanceof Error ? err.message : 'Error al cambiar la contraseña',
         variant: 'destructive',
       })
     } finally {
@@ -101,11 +94,11 @@ export default function ChangePassword() {
           </Button>
         )}
         <div>
-          <h1 className="text-2xl font-bold">Cambiar contrasena</h1>
+          <h1 className="text-2xl font-bold">Cambiar contraseña</h1>
           <p className="text-muted-foreground">
             {isForced
-              ? 'Debes cambiar tu contrasena antes de continuar'
-              : 'Actualiza tu contrasena de acceso'}
+              ? 'Debes cambiar tu contraseña antes de continuar'
+              : 'Actualiza tu contraseña de acceso'}
           </p>
         </div>
       </div>
@@ -114,7 +107,7 @@ export default function ChangePassword() {
         <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
           <AlertTriangle className="h-5 w-5 shrink-0" />
           <p className="text-sm">
-            Es tu primer inicio de sesion. Por seguridad, debes cambiar la contrasena proporcionada por el administrador.
+            Es tu primer inicio de sesión. Por seguridad, debes cambiar la contraseña proporcionada por el administrador.
           </p>
         </div>
       )}
@@ -123,16 +116,16 @@ export default function ChangePassword() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Lock className="h-5 w-5" />
-            Nueva contrasena
+            Nueva contraseña
           </CardTitle>
           <CardDescription>
-            Ingresa tu nueva contrasena
+            Ingresa tu nueva contraseña
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="newPassword">Nueva contrasena</Label>
+              <Label htmlFor="newPassword">Nueva contraseña</Label>
               <Input
                 id="newPassword"
                 type="password"
@@ -149,7 +142,7 @@ export default function ChangePassword() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirmar contrasena</Label>
+              <Label htmlFor="confirmPassword">Confirmar contraseña</Label>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -169,7 +162,7 @@ export default function ChangePassword() {
                   Actualizando...
                 </>
               ) : (
-                'Cambiar contrasena'
+                'Cambiar contraseña'
               )}
             </Button>
           </form>

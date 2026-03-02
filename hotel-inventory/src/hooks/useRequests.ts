@@ -37,7 +37,7 @@ async function createAuditLog({
     })
 
   if (error) {
-    console.error('[createAuditLog] Error creating log:', error)
+    // Audit log creation failed - non-critical
   }
 }
 
@@ -469,9 +469,6 @@ export function useMarkDelivered() {
         product: { format_ml: number; name: string; code: string } | null
       }>
 
-      console.log('[useMarkDelivered] Processing items:', items.length)
-      console.log('[useMarkDelivered] Destination location:', request.location)
-
       // Track stock movements for logging
       const stockMovements: Array<{
         product_name: string
@@ -486,10 +483,7 @@ export function useMarkDelivered() {
 
       for (const item of items) {
         // Only move stock for available items
-        if (item.is_available === false) {
-          console.log('[useMarkDelivered] Skipping unavailable item:', item.product?.name)
-          continue
-        }
+        if (item.is_available === false) continue
 
         const formatMl = item.product?.format_ml || 750
         // Use approved quantity if set, otherwise use requested quantity
@@ -498,8 +492,6 @@ export function useMarkDelivered() {
         const quantityMl = item.unit_type === 'bottles'
           ? effectiveQuantity * formatMl
           : effectiveQuantity
-
-        console.log(`[useMarkDelivered] Moving ${item.product?.name}: ${quantityMl}ml (${item.quantity_requested} ${item.unit_type})`)
 
         // Initialize movement tracking
         const movement = {
@@ -522,15 +514,13 @@ export function useMarkDelivered() {
           .single()
 
         if (bodegaFetchError) {
-          console.error('[useMarkDelivered] Error fetching bodega inventory:', bodegaFetchError)
+          // Non-critical: bodega inventory might not exist yet
         }
 
         if (bodegaInventory) {
           movement.bodega_before = bodegaInventory.quantity_ml
           const newBodegaQty = Math.max(0, bodegaInventory.quantity_ml - quantityMl)
           movement.bodega_after = newBodegaQty
-          console.log(`[useMarkDelivered] Bodega: ${bodegaInventory.quantity_ml}ml -> ${newBodegaQty}ml`)
-
           const { error: bodegaUpdateError } = await supabase
             .from('inventory')
             .update({ quantity_ml: newBodegaQty })
@@ -538,12 +528,9 @@ export function useMarkDelivered() {
             .eq('location', 'bodega')
 
           if (bodegaUpdateError) {
-            console.error('[useMarkDelivered] Error updating bodega inventory:', bodegaUpdateError)
             throw new Error(`Error al actualizar bodega: ${bodegaUpdateError.message}`)
           }
         } else {
-          // No hay inventario en bodega para este producto - crear uno con 0
-          console.warn('[useMarkDelivered] No bodega inventory found for product, creating with 0:', item.product?.name)
           movement.bodega_before = 0
           movement.bodega_after = 0
 
@@ -557,8 +544,7 @@ export function useMarkDelivered() {
             })
 
           if (insertBodegaError && insertBodegaError.code !== '23505') {
-            // 23505 = unique constraint violation (ya existe)
-            console.error('[useMarkDelivered] Error creating bodega inventory:', insertBodegaError)
+            // 23505 = unique constraint violation (already exists)
           }
         }
 
@@ -572,15 +558,12 @@ export function useMarkDelivered() {
 
         if (destFetchError && destFetchError.code !== 'PGRST116') {
           // PGRST116 = no rows returned, which is OK
-          console.error('[useMarkDelivered] Error fetching destination inventory:', destFetchError)
         }
 
         if (destInventory) {
           movement.destination_before = destInventory.quantity_ml
           const newDestQty = destInventory.quantity_ml + quantityMl
           movement.destination_after = newDestQty
-          console.log(`[useMarkDelivered] Destination ${request.location}: ${destInventory.quantity_ml}ml -> ${newDestQty}ml`)
-
           const { error: destUpdateError } = await supabase
             .from('inventory')
             .update({ quantity_ml: newDestQty })
@@ -588,15 +571,12 @@ export function useMarkDelivered() {
             .eq('location', request.location)
 
           if (destUpdateError) {
-            console.error('[useMarkDelivered] Error updating destination inventory:', destUpdateError)
             throw new Error(`Error al actualizar destino: ${destUpdateError.message}`)
           }
         } else {
           // Create new inventory entry for destination
           movement.destination_before = 0
           movement.destination_after = quantityMl
-          console.log(`[useMarkDelivered] Creating new inventory at ${request.location}: ${quantityMl}ml`)
-
           const { error: insertError } = await supabase
             .from('inventory')
             .insert({
@@ -606,15 +586,12 @@ export function useMarkDelivered() {
             })
 
           if (insertError) {
-            console.error('[useMarkDelivered] Error inserting destination inventory:', insertError)
             throw new Error(`Error al crear inventario destino: ${insertError.message}`)
           }
         }
 
         stockMovements.push(movement)
       }
-
-      console.log('[useMarkDelivered] Stock movement completed successfully')
 
       // Create audit log with stock movement details
       await createAuditLog({

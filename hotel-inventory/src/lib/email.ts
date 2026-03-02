@@ -89,10 +89,7 @@ export async function sendNotificationEmail(
     console.warn(`[Email] Filtered out ${invalidCount} invalid email(s)`)
   }
 
-  console.log('[Email] Sending to:', validRecipients)
-
   try {
-    // Use retry logic for resilience
     const result = await withRetry(async () => {
       const { data: result, error } = await supabase.functions.invoke('send-email', {
         body: {
@@ -109,7 +106,6 @@ export async function sendNotificationEmail(
       return result
     })
 
-    console.log('[Email] Email sent successfully:', result)
     return { success: true }
   } catch (error) {
     console.error('[Email] Failed after retries:', error)

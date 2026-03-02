@@ -90,8 +90,8 @@ export default function MoreMenu() {
       show: isAdmin,
     },
     {
-      label: 'Cambiar contrasena',
-      href: '/cambiar-contrasena',
+      label: 'Cambiar contraseña',
+      href: '/cambiar-contraseña',
       icon: Lock,
       show: true,
     },

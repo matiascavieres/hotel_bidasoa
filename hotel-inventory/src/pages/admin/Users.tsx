@@ -92,7 +92,7 @@ export default function AdminUsers() {
           if (formData.password.length < 6) {
             toast({
               title: 'Error',
-              description: 'La contrasena debe tener al menos 6 caracteres',
+              description: 'La contraseña debe tener al menos 6 caracteres',
               variant: 'destructive',
             })
             return
@@ -109,7 +109,7 @@ export default function AdminUsers() {
         if (!formData.password) {
           toast({
             title: 'Error',
-            description: 'La contrasena es requerida',
+            description: 'La contraseña es requerida',
             variant: 'destructive',
           })
           return
@@ -339,7 +339,7 @@ export default function AdminUsers() {
 
             <div className="space-y-2">
               <Label htmlFor="password">
-                {editingUser ? 'Nueva contrasena' : 'Contrasena'}
+                {editingUser ? 'Nueva contraseña' : 'Contraseña'}
               </Label>
               <Input
                 id="password"
