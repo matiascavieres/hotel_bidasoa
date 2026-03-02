@@ -13,6 +13,7 @@ import {
   PackagePlus,
   Download,
   UtensilsCrossed,
+  HelpCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
@@ -74,6 +75,11 @@ const mainNavItems: NavItem[] = [
     href: '/ventas/importar',
     icon: Download,
     roles: ['admin', 'bodeguero'],
+  },
+  {
+    label: 'Ayuda',
+    href: '/ayuda',
+    icon: HelpCircle,
   },
 ]
 

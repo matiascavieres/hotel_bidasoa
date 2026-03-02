@@ -21,6 +21,8 @@ import MoreMenu from '@/pages/MoreMenu'
 import Inbound from '@/pages/Inbound'
 import NewInbound from '@/pages/NewInbound'
 import AdminRecipes from '@/pages/admin/Recipes'
+import AdminSettings from '@/pages/admin/Settings'
+import Help from '@/pages/Help'
 import type { UserRole } from '@/types'
 
 const queryClient = new QueryClient({
@@ -203,6 +205,15 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/admin/configuracion"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminSettings />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/ayuda" element={<Help />} />
         <Route
           path="/ventas/importar"
           element={

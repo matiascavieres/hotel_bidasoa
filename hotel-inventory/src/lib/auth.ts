@@ -86,8 +86,15 @@ export function canAccessLocation(
   return userLocation === targetLocation
 }
 
-export function canManageInventory(role: UserRole): boolean {
-  return role === 'admin' || role === 'bodeguero'
+export function canManageInventory(
+  role: UserRole,
+  inventoryModeEnabled?: boolean,
+  userLocation?: LocationType | null,
+  targetLocation?: LocationType
+): boolean {
+  if (role === 'admin' || role === 'bodeguero') return true
+  if (role === 'bartender' && inventoryModeEnabled && userLocation && targetLocation && userLocation === targetLocation) return true
+  return false
 }
 
 export function canApproveRequests(role: UserRole): boolean {

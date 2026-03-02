@@ -7,6 +7,8 @@ import { StockIndicator } from './StockIndicator'
 import { EditQuantityModal } from './EditQuantityModal'
 import { useAuth } from '@/context/AuthContext'
 import { useInventory } from '@/hooks/useInventory'
+import { useInventoryMode } from '@/hooks/useAppSettings'
+import { canManageInventory } from '@/lib/auth'
 import type { LocationType } from '@/types'
 
 interface StockTableProps {
@@ -77,7 +79,8 @@ export function StockTable({
     return (localStorage.getItem('stock-view-mode') as ViewMode) || 'list'
   })
 
-  const canEdit = profile?.role === 'admin' || profile?.role === 'bodeguero'
+  const { data: inventoryMode } = useInventoryMode()
+  const canEdit = canManageInventory(profile?.role ?? 'bartender', inventoryMode?.enabled, profile?.location, location)
 
   const handleViewMode = (mode: ViewMode) => {
     setViewMode(mode)
@@ -265,7 +268,7 @@ export function StockTable({
         <>
           {/* Desktop Table */}
           <div className="hidden md:block">
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-auto max-h-[calc(100vh-320px)]">
               <table className="w-full table-fixed">
                 <colgroup>
                   <col className="w-[35%]" />
@@ -274,8 +277,8 @@ export function StockTable({
                   <col className="w-[15%]" />
                   <col className="w-[20%]" />
                 </colgroup>
-                <thead>
-                  <tr className="border-b bg-muted/50">
+                <thead className="sticky top-0 z-10">
+                  <tr className="border-b bg-muted">
                     <th
                       className="px-2 py-2 text-left text-sm font-medium cursor-pointer hover:text-foreground"
                       onClick={() => handleSort('name')}

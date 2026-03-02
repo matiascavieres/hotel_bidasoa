@@ -210,7 +210,7 @@ export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
       </div>
 
       {/* Table */}
-      <div className="rounded-md border overflow-x-auto">
+      <div className="rounded-md border overflow-auto max-h-[calc(100vh-280px)]">
         <table className="w-full">
           <colgroup>
             <col className="w-[4%]" />
@@ -220,8 +220,8 @@ export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
             <col />
             <col />
           </colgroup>
-          <thead>
-            <tr className="border-b bg-muted/50">
+          <thead className="sticky top-0 z-10">
+            <tr className="border-b bg-muted">
               <th className="px-2 py-2 text-center text-sm font-medium text-muted-foreground">
                 #
               </th>
