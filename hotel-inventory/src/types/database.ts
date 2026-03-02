@@ -123,6 +123,7 @@ export type Database = {
           supplier_id: string | null
           format_ml: number | null
           sale_price: number | null
+          image_url: string | null
           is_active: boolean
           created_at: string
           updated_at: string
@@ -135,6 +136,7 @@ export type Database = {
           supplier_id?: string | null
           format_ml?: number | null
           sale_price?: number | null
+          image_url?: string | null
           is_active?: boolean
           created_at?: string
           updated_at?: string
@@ -147,6 +149,7 @@ export type Database = {
           supplier_id?: string | null
           format_ml?: number | null
           sale_price?: number | null
+          image_url?: string | null
           is_active?: boolean
           created_at?: string
           updated_at?: string

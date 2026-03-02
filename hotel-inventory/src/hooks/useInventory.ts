@@ -186,6 +186,7 @@ export function useUpdateProduct() {
       categoryId,
       formatMl,
       salePrice,
+      imageUrl,
     }: {
       id: string
       code: string
@@ -193,16 +194,24 @@ export function useUpdateProduct() {
       categoryId: string
       formatMl: number
       salePrice?: number
+      imageUrl?: string | null
     }) => {
+      const updateData: Record<string, unknown> = {
+        code,
+        name,
+        category_id: categoryId,
+        format_ml: formatMl,
+        sale_price: salePrice,
+      }
+
+      // Only include image_url if explicitly provided (including null to clear)
+      if (imageUrl !== undefined) {
+        updateData.image_url = imageUrl
+      }
+
       const { data, error } = await supabase
         .from('products')
-        .update({
-          code,
-          name,
-          category_id: categoryId,
-          format_ml: formatMl,
-          sale_price: salePrice,
-        })
+        .update(updateData)
         .eq('id', id)
         .select(`
           *,
@@ -215,6 +224,7 @@ export function useUpdateProduct() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.invalidateQueries({ queryKey: ['inventory'] })
     },
   })
 }

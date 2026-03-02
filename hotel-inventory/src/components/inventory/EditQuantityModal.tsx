@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ScanBarcode } from 'lucide-react'
+import { ScanBarcode, Camera, X, ImageIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -28,6 +28,7 @@ import { useUpdateInventory, useCategories, useUpdateProduct } from '@/hooks/use
 import { useCreateLog } from '@/hooks/useLogs'
 import { useAuth } from '@/context/AuthContext'
 import { useInventoryMode } from '@/hooks/useAppSettings'
+import { uploadProductImage, deleteProductImage, useProductImageUrl } from '@/hooks/useProductImage'
 
 const editSchema = z.object({
   quantity: z.number().min(0, 'La cantidad no puede ser negativa'),
@@ -47,6 +48,7 @@ interface EditQuantityModalProps {
     quantity_ml: number
     min_stock_ml: number
     sale_price?: number | null
+    image_url?: string | null
   }
   location: LocationType
   open: boolean
@@ -78,6 +80,17 @@ export function EditQuantityModal({
   const [productCategoryId, setProductCategoryId] = useState(product.category_id || '')
   const [productFormatMl, setProductFormatMl] = useState(product.format_ml)
   const [productSalePrice, setProductSalePrice] = useState(product.sale_price || 0)
+  const [notes, setNotes] = useState('')
+
+  // Image state
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [removingImage, setRemovingImage] = useState(false)
+  const { signedUrl: existingImageUrl } = useProductImageUrl(product.image_url)
+
+  // The display URL: preview (local) > existing signed URL > null
+  const displayImageUrl = imagePreview || (removingImage ? null : existingImageUrl)
 
   const currentBottles = product.quantity_ml / product.format_ml
 
@@ -106,8 +119,35 @@ export function EditQuantityModal({
     }
   }
 
-  // Check if product fields changed
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setImageFile(file)
+    setRemovingImage(false)
+
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setImagePreview(ev.target?.result as string)
+    }
+    reader.readAsDataURL(file)
+
+    // Reset input so same file can be re-selected
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const handleRemoveImage = () => {
+    setImageFile(null)
+    setImagePreview(null)
+    setRemovingImage(true)
+  }
+
+  // Check if product fields changed (including image)
   const hasProductChanges = () => {
+    if (imageFile !== null || removingImage) return true
+
     if (isAdmin) {
       return (
         productCode !== product.code ||
@@ -117,7 +157,7 @@ export function EditQuantityModal({
         (productSalePrice || 0) !== (product.sale_price || 0)
       )
     }
-    // Bartender can only change code
+    // Bartender can change code and image
     return productCode !== product.code
   }
 
@@ -129,10 +169,37 @@ export function EditQuantityModal({
 
     if (isMutating) return
 
+    // Handle image upload/removal
+    let newImageUrl: string | null | undefined = undefined // undefined = no change
+
+    if (imageFile) {
+      try {
+        const path = await uploadProductImage(product.id, imageFile)
+        newImageUrl = path
+
+        // Delete old image if it existed
+        if (product.image_url) {
+          await deleteProductImage(product.image_url)
+        }
+      } catch (err) {
+        console.error('Error uploading product image:', err)
+        toast({
+          title: 'Error',
+          description: 'No se pudo subir la imagen del producto',
+          variant: 'destructive',
+        })
+        return
+      }
+    } else if (removingImage && product.image_url) {
+      newImageUrl = null
+      await deleteProductImage(product.image_url)
+    }
+
     // Save product changes if user made edits
     if (canEditCode && hasProductChanges()) {
       const changes: Record<string, { from: unknown; to: unknown }> = {}
       if (product.code !== productCode) changes.code = { from: product.code, to: productCode }
+      if (newImageUrl !== undefined) changes.image = { from: product.image_url || null, to: newImageUrl }
 
       if (isAdmin) {
         if (product.name !== productName) changes.name = { from: product.name, to: productName }
@@ -153,6 +220,7 @@ export function EditQuantityModal({
             categoryId: productCategoryId,
             formatMl: productFormatMl,
             salePrice: productSalePrice || undefined,
+            imageUrl: newImageUrl,
           }
         : {
             id: product.id,
@@ -161,6 +229,7 @@ export function EditQuantityModal({
             categoryId: product.category_id || '',
             formatMl: product.format_ml,
             salePrice: product.sale_price || undefined,
+            imageUrl: newImageUrl,
           }
 
       updateProduct.mutate(
@@ -209,6 +278,7 @@ export function EditQuantityModal({
                 previous_bottles: parseFloat((previousMl / product.format_ml).toFixed(1)),
                 new_bottles: parseFloat((quantityMl / product.format_ml).toFixed(1)),
                 format_ml: product.format_ml,
+                ...(notes.trim() ? { notes: notes.trim() } : {}),
               },
             })
           }
@@ -232,6 +302,61 @@ export function EditQuantityModal({
 
   const isSaving = updateInventory.isPending || updateProduct.isPending
 
+  // Hidden file input for image upload
+  const imageInput = (
+    <input
+      ref={fileInputRef}
+      type="file"
+      accept="image/*"
+      capture="environment"
+      className="hidden"
+      onChange={handleImageChange}
+    />
+  )
+
+  // Reusable image section for editable views
+  const imageSection = canEditCode && (
+    <div className="flex items-center gap-3">
+      {/* Image display / placeholder */}
+      <div className="relative h-20 w-20 sm:h-24 sm:w-24 shrink-0 rounded-lg border-2 border-dashed border-muted-foreground/25 overflow-hidden bg-muted/30 flex items-center justify-center">
+        {displayImageUrl ? (
+          <>
+            <img
+              src={displayImageUrl}
+              alt={product.name}
+              className="h-full w-full object-cover"
+            />
+            <button
+              type="button"
+              className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-white hover:bg-destructive/80 z-10"
+              onClick={handleRemoveImage}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </>
+        ) : (
+          <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
+        )}
+      </div>
+
+      {/* Upload button */}
+      <div className="flex flex-col gap-1.5">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <Camera className="mr-1.5 h-3.5 w-3.5" />
+          {displayImageUrl ? 'Cambiar foto' : 'Subir foto'}
+        </Button>
+        <p className="text-[10px] text-muted-foreground">
+          JPG, PNG o WebP
+        </p>
+      </div>
+    </div>
+  )
+
   return (
     <>
     <Dialog open={open} onOpenChange={onClose}>
@@ -241,6 +366,7 @@ export function EditQuantityModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)}>
+          {imageInput}
           <div className="grid gap-4 py-4 pb-8">
 
             {/* Admin: all editable product fields */}
@@ -252,6 +378,7 @@ export function EditQuantityModal({
                     {LOCATION_NAMES[location]}
                   </Badge>
                 </div>
+                {imageSection}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">Codigo</Label>
@@ -319,7 +446,7 @@ export function EditQuantityModal({
                 </div>
               </div>
             ) : canEditCode ? (
-              /* Bartender in inventory mode: read-only info + editable code */
+              /* Bartender in inventory mode: read-only info + editable code + image */
               <div className="space-y-3 rounded-lg border p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -333,6 +460,7 @@ export function EditQuantityModal({
                     </Badge>
                   </div>
                 </div>
+                {imageSection}
                 <div className="space-y-1">
                   <Label className="text-xs">Codigo de barras</Label>
                   <div className="flex gap-1">
@@ -359,7 +487,15 @@ export function EditQuantityModal({
               /* Read-only product info */
               <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
-                  <div>
+                  {/* Show read-only thumbnail if exists */}
+                  {existingImageUrl && (
+                    <img
+                      src={existingImageUrl}
+                      alt={product.name}
+                      className="h-14 w-14 rounded-lg object-cover border shrink-0"
+                    />
+                  )}
+                  <div className="flex-1">
                     <p className="font-semibold text-base">{product.name}</p>
                     <p className="text-sm text-muted-foreground">{product.code} • {product.format_ml}ml</p>
                   </div>
@@ -421,6 +557,20 @@ export function EditQuantityModal({
                   {errors.quantity.message}
                 </p>
               )}
+            </div>
+
+            {/* Notes / Comments */}
+            <div className="space-y-2">
+              <Label htmlFor="notes" className="text-xs text-muted-foreground">
+                Comentario (opcional)
+              </Label>
+              <Input
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Ej: Botella rota, ajuste por conteo fisico..."
+                className="text-sm"
+              />
             </div>
           </div>
 

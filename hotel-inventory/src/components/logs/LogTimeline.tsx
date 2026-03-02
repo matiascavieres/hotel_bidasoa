@@ -303,6 +303,11 @@ export function LogTimeline({ actionFilter, dateFrom, dateTo }: LogTimelineProps
                         </span>
                       </div>
                       <p className="text-sm">{getDescription(log)}</p>
+                      {details.notes && (
+                        <p className="text-xs text-muted-foreground/70 italic">
+                          &quot;{details.notes as string}&quot;
+                        </p>
+                      )}
                       <p className="text-xs text-muted-foreground">
                         Por: {user?.full_name || 'Usuario'}
                       </p>

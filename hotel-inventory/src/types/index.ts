@@ -68,6 +68,7 @@ export interface Product {
   category_id: string
   format_ml: number | null
   sale_price: number | null
+  image_url: string | null
   is_active: boolean
   supplier_id: string | null
   created_at: string

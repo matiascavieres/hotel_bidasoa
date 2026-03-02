@@ -176,17 +176,26 @@ export function LogTable({ actionFilter, dateFrom, dateTo }: LogTableProps) {
                   )}
                 </td>
                 <td className="px-3 py-2">
-                  {items && (
+                  {items ? (
                     <span className="text-xs">{items}</span>
-                  )}
+                  ) : log.action === 'stock_adjustment' && details.product_name ? (
+                    <span className="text-xs">{details.product_name as string}</span>
+                  ) : null}
                 </td>
                 <td className="px-3 py-2">
                   {movements ? (
                     <span className="text-xs text-muted-foreground">{movements}</span>
                   ) : log.action === 'stock_adjustment' ? (
-                    <span className="text-xs text-muted-foreground">
-                      {formatStockAdjustment(details)}
-                    </span>
+                    <div>
+                      <span className="text-xs text-muted-foreground">
+                        {formatStockAdjustment(details)}
+                      </span>
+                      {details.notes && (
+                        <p className="text-xs text-muted-foreground/70 italic mt-0.5">
+                          {details.notes as string}
+                        </p>
+                      )}
+                    </div>
                   ) : null}
                 </td>
               </tr>

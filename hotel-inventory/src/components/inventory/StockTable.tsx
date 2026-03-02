@@ -29,6 +29,7 @@ interface InventoryItem {
     format_ml: number | null
     category_id: string
     sale_price: number | null
+    image_url: string | null
     category?: { id: string; name: string } | null
   } | null
 }
@@ -43,6 +44,7 @@ interface EditingProduct {
   quantity_ml: number
   min_stock_ml: number
   sale_price: number | null
+  image_url: string | null
 }
 
 type StockSortField = 'name' | 'category' | 'quantity_ml' | 'status'
@@ -101,6 +103,7 @@ export function StockTable({
         quantity_ml: item.quantity_ml,
         min_stock_ml: item.min_stock_ml || 0,
         sale_price: item.product!.sale_price ?? null,
+        image_url: item.product!.image_url ?? null,
       }))
   }, [inventory])
 
