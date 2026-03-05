@@ -34,14 +34,6 @@ export default function SalesImport() {
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!recipes?.length) {
-      toast({
-        title: 'No hay recetas configuradas',
-        description: 'Primero crea recetas en la sección de Recetas antes de importar ventas',
-        variant: 'destructive',
-      })
-      return
-    }
 
     setIsParsingFile(true)
     try {
@@ -60,8 +52,8 @@ export default function SalesImport() {
         familia: r.familia,
       })))
 
-      // Match with system recipes
-      const computedPreview = matchSalesWithRecipes(grouped, recipes)
+      // Match with system recipes (empty array if no recipes — analytics-only mode)
+      const computedPreview = matchSalesWithRecipes(grouped, recipes ?? [])
       setPreview(computedPreview)
       setStep('preview')
     } catch (err) {
@@ -91,7 +83,9 @@ export default function SalesImport() {
       })
       toast({
         title: 'Importación completada',
-        description: `Stock actualizado: ${preview.stockChanges.length} productos descontados`,
+        description: preview.stockChanges.length > 0
+          ? `Stock actualizado: ${preview.stockChanges.length} productos descontados`
+          : 'Ventas registradas en el historial (sin deducción de stock)',
       })
       setStep('done')
     } catch {
@@ -166,14 +160,13 @@ export default function SalesImport() {
               </div>
 
               {!recipes?.length && (
-                <div className="flex items-center gap-2 rounded-md bg-warning/10 p-3 mt-4">
-                  <AlertCircle className="h-4 w-4 text-warning shrink-0" />
-                  <p className="text-sm text-warning">
-                    No hay recetas configuradas. Ve a{' '}
+                <div className="flex items-center gap-2 rounded-md bg-muted p-3 mt-4">
+                  <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <p className="text-sm text-muted-foreground">
+                    Sin recetas configuradas — las ventas se registrarán en el historial pero no se descontará stock del bar.{' '}
                     <a href="/admin/recetas" className="underline font-medium">
-                      Recetas
-                    </a>{' '}
-                    para crear el catálogo de cócteles primero.
+                      Configurar recetas
+                    </a>
                   </p>
                 </div>
               )}
@@ -240,6 +233,15 @@ export default function SalesImport() {
             </div>
           </div>
 
+          {preview.matched.length === 0 && (
+            <div className="flex items-center gap-2 rounded-md bg-muted p-3">
+              <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />
+              <p className="text-sm text-muted-foreground">
+                Solo historial de ventas — no se modificará el stock (0 recetas mapeadas). Los datos quedarán disponibles en la sección Ventas.
+              </p>
+            </div>
+          )}
+
           <SalesImportPreview preview={preview} />
 
           <div className="flex gap-3 pt-2">
@@ -248,7 +250,7 @@ export default function SalesImport() {
             </Button>
             <Button
               onClick={handleConfirm}
-              disabled={processImport.isPending || preview.matched.length === 0}
+              disabled={processImport.isPending || totalRows === 0}
             >
               {processImport.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
