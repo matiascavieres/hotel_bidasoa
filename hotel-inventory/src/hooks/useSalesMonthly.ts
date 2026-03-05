@@ -164,6 +164,23 @@ export function useSalesMonthlyGrupos(fromMonth: string, toMonth: string) {
   })
 }
 
+// ── Grupo lists for Bar vs Vinos split ────────────────────────────────────────
+
+export const BAR_GRUPOS = [
+  'Aperitivos', 'Bajativos', 'Bebidas', 'Bourbon', 'Cafetería',
+  'Cervezas', 'Gin', 'Jugos', 'Mezcal', 'Mixología', 'Mocktails',
+  'Pisco', 'Ron', 'Tequila', 'Vodka', 'Whisky',
+]
+
+export const VINOS_GRUPOS = [
+  'Blend', 'Burbujas', 'Cabernet Sauvignon', 'Carmenere', 'Catas',
+  'Chardonnay', 'Icono de la Semana', 'Iconos', 'Otros Tintos',
+  'Pinot Noir', 'Por Copas', 'Rose', 'Sauvignon Blanc',
+]
+
+const BAR_GRUPOS_SET   = new Set(BAR_GRUPOS.map(g => g.toLowerCase()))
+const VINOS_GRUPOS_SET = new Set(VINOS_GRUPOS.map(g => g.toLowerCase()))
+
 // ── Familia totals (for KPI breakdown) ────────────────────────────────────────
 
 export interface FamiliaTotals {
@@ -186,7 +203,7 @@ export function useSalesMonthlyTotals(fromMonth: string, toMonth: string): {
     queryFn: async () => {
       let q = supabase
         .from('sales_monthly')
-        .select('familia, importe_total, cantidad')
+        .select('familia, grupo, importe_total, cantidad')
 
       if (fromYear === toYear) {
         q = q.eq('year', fromYear).gte('month', fromMonthNum).lte('month', toMonthNum)
@@ -197,16 +214,20 @@ export function useSalesMonthlyTotals(fromMonth: string, toMonth: string): {
       const { data, error } = await q
       if (error) throw error
 
-      const rows = data as { familia: string; importe_total: number; cantidad: number }[]
+      const rows = data as { familia: string; grupo: string; importe_total: number; cantidad: number }[]
 
       const totals: FamiliaTotals = { total: 0, cocina: 0, bar: 0, vinos: 0, totalUnits: 0 }
       for (const r of rows) {
         totals.total      += r.importe_total
         totals.totalUnits += r.cantidad
         const f = r.familia.toLowerCase()
-        if (f.includes('alimentaci'))     totals.cocina += r.importe_total
-        else if (f.includes('bebestibles bar')) totals.bar   += r.importe_total
-        else if (f.includes('bebestibles sanz')) totals.vinos += r.importe_total
+        const g = (r.grupo || '').toLowerCase()
+        if (f.includes('alimentaci')) {
+          totals.cocina += r.importe_total
+        } else if (f.includes('bebestibles')) {
+          if (BAR_GRUPOS_SET.has(g))   totals.bar   += r.importe_total
+          else if (VINOS_GRUPOS_SET.has(g)) totals.vinos += r.importe_total
+        }
       }
 
       return totals

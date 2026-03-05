@@ -18,6 +18,8 @@ import {
   useSalesMonthlyTotals,
   useUpdateSalesMonthly,
   getPreviousMonth,
+  BAR_GRUPOS,
+  VINOS_GRUPOS,
 } from '@/hooks/useSalesMonthly'
 import { useToast } from '@/hooks/use-toast'
 import type { FamiliaPreset, SalesData } from '@/types'
@@ -40,8 +42,14 @@ const FAMILIA_PRESET_LABELS: Record<FamiliaPreset, string> = {
 
 const FAMILIA_PRESET_FILTER: Record<Exclude<FamiliaPreset, 'all'>, string> = {
   cocina: 'Alimentaci',
-  bar:    'Bebestibles Bar',
-  vinos:  'Bebestibles Sanz',
+  bar:    'Bebestibles',
+  vinos:  'Bebestibles',
+}
+
+// Grupos que aplica cada preset de bebestibles
+const PRESET_GRUPOS: Partial<Record<FamiliaPreset, string[]>> = {
+  bar:   BAR_GRUPOS,
+  vinos: VINOS_GRUPOS,
 }
 
 const FAMILIA_PRESET_ICONS: Record<FamiliaPreset, ReactNode> = {
@@ -111,12 +119,25 @@ export default function SalesAnalysis() {
     ? FAMILIA_PRESET_FILTER[familiaPreset]
     : undefined
 
+  // Grupos efectivos: si el preset define grupos propios, los intersectamos con
+  // los que el usuario haya seleccionado manualmente (o usamos solo el preset).
+  const presetGrupos = familiaPreset !== 'all' ? PRESET_GRUPOS[familiaPreset] : undefined
+  const effectiveGrupos = useMemo(() => {
+    if (presetGrupos) {
+      // Si el usuario también filtra por grupos, intersectamos con el preset
+      return selectedGrupos.length > 0
+        ? presetGrupos.filter(g => selectedGrupos.includes(g))
+        : presetGrupos
+    }
+    return selectedGrupos.length > 0 ? selectedGrupos : undefined
+  }, [presetGrupos, selectedGrupos])
+
   // ── Data ─────────────────────────────────────────────────────────────────────
   const { data: salesData, isLoading } = useSalesMonthly({
     fromMonth,
     toMonth,
     familiaFilter,
-    grupos:      selectedGrupos.length > 0 ? selectedGrupos : undefined,
+    grupos:      effectiveGrupos,
     searchQuery: searchQuery || undefined,
   })
 
@@ -178,6 +199,12 @@ export default function SalesAnalysis() {
     setFamiliaPreset('all')
     setSelectedGrupos([])
     setSearchQuery('')
+  }
+
+  // Al cambiar el preset, limpiar grupos seleccionados manualmente
+  const handleFamiliaPreset = (preset: FamiliaPreset) => {
+    setFamiliaPreset(preset)
+    setSelectedGrupos([])
   }
 
   const toggleGrupo = (g: string) => {
@@ -332,10 +359,7 @@ export default function SalesAnalysis() {
               key={preset}
               size="sm"
               variant={familiaPreset === preset ? 'default' : 'outline'}
-              onClick={() => {
-                setFamiliaPreset(preset)
-                setSelectedGrupos([])
-              }}
+              onClick={() => handleFamiliaPreset(preset)}
               className="gap-1.5"
             >
               {FAMILIA_PRESET_ICONS[preset]}
