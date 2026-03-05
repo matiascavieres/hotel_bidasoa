@@ -705,6 +705,47 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_monthly: {
+        Row: {
+          id: string
+          receta: string
+          grupo: string
+          familia: string
+          year: number
+          month: number
+          cantidad: number
+          importe_unitario: number
+          importe_total: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          receta: string
+          grupo?: string
+          familia?: string
+          year: number
+          month: number
+          cantidad?: number
+          importe_unitario?: number
+          importe_total?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          receta?: string
+          grupo?: string
+          familia?: string
+          year?: number
+          month?: number
+          cantidad?: number
+          importe_unitario?: number
+          importe_total?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
