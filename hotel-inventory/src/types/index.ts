@@ -282,6 +282,30 @@ export interface SalesData {
   created_at: string
 }
 
+// Monthly sales record (one entry per recipe per calendar month)
+export interface SalesMonthly {
+  id: string
+  receta: string
+  grupo: string
+  familia: string
+  year: number
+  month: number
+  cantidad: number
+  importe_unitario: number
+  importe_total: number
+  created_at: string
+  updated_at: string
+}
+
+// Preset familia filter groups used in SalesAnalysis
+export type FamiliaPreset = 'all' | 'cocina' | 'bar' | 'vinos'
+
+export const FAMILIA_PRESET_MAP: Record<Exclude<FamiliaPreset, 'all'>, string> = {
+  cocina: 'Alimentación',
+  bar:    'Bebestibles Bar',
+  vinos:  'Bebestibles Sanz',
+}
+
 // Location display names
 export const LOCATION_NAMES: Record<LocationType, string> = {
   bodega: 'Bodega',

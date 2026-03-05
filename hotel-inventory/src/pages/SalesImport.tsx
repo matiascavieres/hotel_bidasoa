@@ -29,6 +29,7 @@ export default function SalesImport() {
   const [importDate, setImportDate] = useState('')
   const [totalRows, setTotalRows] = useState(0)
   const [isParsingFile, setIsParsingFile] = useState(false)
+  const [rawSalesRows, setRawSalesRows] = useState<{ receta: string; cantidad: number; grupo: string; familia: string }[]>([])
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -50,6 +51,14 @@ export default function SalesImport() {
       setFilename(file.name)
       setImportDate(parsed.inferredDate || new Date().toISOString().split('T')[0])
       setTotalRows(grouped.length)
+
+      // Save raw rows for sales_monthly population
+      setRawSalesRows(parsed.rows.map(r => ({
+        receta: r.receta,
+        cantidad: r.cantidad,
+        grupo: r.grupo,
+        familia: r.familia,
+      })))
 
       // Match with system recipes
       const computedPreview = matchSalesWithRecipes(grouped, recipes)
@@ -78,6 +87,7 @@ export default function SalesImport() {
         importDate,
         importedBy: user.id,
         totalRows,
+        salesRows: rawSalesRows,
       })
       toast({
         title: 'Importación completada',
@@ -98,6 +108,7 @@ export default function SalesImport() {
     setFilename('')
     setImportDate('')
     setTotalRows(0)
+    setRawSalesRows([])
   }
 
   const formatDate = (dateStr: string) => {

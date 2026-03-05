@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import type { Recipe, SalesImport } from '@/types'
 import type { LocationType } from '@/types'
+import { upsertSalesMonthlyRecord } from '@/hooks/useSalesMonthly'
 
 export interface SalesDeductionItem {
   recetaFNS: string          // Recipe name from the FNS file
@@ -171,12 +172,20 @@ export function useProcessSalesImport() {
       importDate,
       importedBy,
       totalRows,
+      salesRows,
     }: {
       preview: SalesImportPreview
       filename: string
       importDate: string
       importedBy: string
       totalRows: number
+      /** Original parsed sales rows (receta, grupo, familia, cantidad) from the FNS file */
+      salesRows?: {
+        receta: string
+        cantidad: number
+        grupo: string
+        familia: string
+      }[]
     }) => {
       const { matched, unmatched, stockChanges } = preview
 
@@ -230,7 +239,55 @@ export function useProcessSalesImport() {
 
       if (importError) throw importError
 
-      // 3. Create audit log
+      // 3. Populate sales_monthly for analytics
+      if (salesRows && salesRows.length > 0 && importDate) {
+        const d = new Date(importDate)
+        const year  = d.getFullYear()
+        const month = d.getMonth() + 1
+
+        // Look up importe_unitario from sales_data by recipe name
+        const { data: priceData } = await supabase
+          .from('sales_data')
+          .select('receta, importe_unitario')
+
+        const priceMap = new Map<string, number>()
+        if (priceData) {
+          for (const p of priceData as { receta: string; importe_unitario: number }[]) {
+            priceMap.set(p.receta.toLowerCase().trim(), p.importe_unitario)
+          }
+        }
+
+        // Aggregate salesRows by receta (some recipes may appear multiple times)
+        const recetaMap = new Map<string, { receta: string; grupo: string; familia: string; cantidad: number }>()
+        for (const row of salesRows) {
+          const key = row.receta.toLowerCase().trim()
+          const existing = recetaMap.get(key)
+          if (existing) {
+            existing.cantidad += row.cantidad
+          } else {
+            recetaMap.set(key, { receta: row.receta, grupo: row.grupo, familia: row.familia, cantidad: row.cantidad })
+          }
+        }
+
+        for (const row of recetaMap.values()) {
+          const importeUnitario = priceMap.get(row.receta.toLowerCase().trim()) ?? 0
+          try {
+            await upsertSalesMonthlyRecord({
+              receta:           row.receta,
+              grupo:            row.grupo,
+              familia:          row.familia,
+              year,
+              month,
+              cantidad:         Math.round(row.cantidad),
+              importe_unitario: importeUnitario,
+            })
+          } catch {
+            // Non-critical – continue even if individual upsert fails
+          }
+        }
+      }
+
+      // 4. Create audit log
       await supabase.from('audit_logs').insert({
         user_id: importedBy,
         action: 'sales_import',
