@@ -127,6 +127,35 @@ export function useCategories() {
   })
 }
 
+export function useCreateCategory() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const { data: existing } = await supabase
+        .from('categories')
+        .select('sort_order')
+        .order('sort_order', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      const sortOrder = existing ? existing.sort_order + 1 : 1
+
+      const { data, error } = await supabase
+        .from('categories')
+        .insert({ name, sort_order: sortOrder })
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+    },
+  })
+}
+
 export function useCreateProduct() {
   const queryClient = useQueryClient()
 

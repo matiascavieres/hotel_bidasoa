@@ -144,6 +144,94 @@ function formatItemsList(details: Record<string, unknown>): string {
   return items.map(i => `${i.name} x${i.quantity} ${i.unit}`).join(', ')
 }
 
+export function exportApprovedItemsSummary(
+  logs: Array<{
+    action: string
+    created_at: string
+    details: Record<string, unknown>
+  }>,
+  products: Array<{
+    name: string
+    sale_price: number | null
+  }>
+) {
+  // Build a name → sale_price map (lowercase keys for fuzzy matching)
+  const productMap = new Map<string, number>()
+  for (const p of products) {
+    if (p.sale_price && p.sale_price > 0) {
+      productMap.set(p.name.toLowerCase(), p.sale_price)
+    }
+  }
+
+  // Aggregate items from approved/delivered requests
+  const itemTotals = new Map<string, { cantidad: number; sale_price: number }>()
+
+  for (const log of logs) {
+    if (log.action !== 'request_approved' && log.action !== 'request_delivered') continue
+    const items = log.details.items as Array<{ name: string; quantity: number }> | undefined
+    if (!items) continue
+
+    for (const item of items) {
+      const key = item.name
+      const existing = itemTotals.get(key)
+      const price = productMap.get(item.name.toLowerCase()) ?? 0
+      if (existing) {
+        existing.cantidad += item.quantity
+      } else {
+        itemTotals.set(key, { cantidad: item.quantity, sale_price: price })
+      }
+    }
+  }
+
+  if (itemTotals.size === 0) return false
+
+  const headers = [
+    'Producto',
+    'Cantidad Total',
+    'Precio Venta Unit.',
+    'Total Venta ($)',
+    'Precio Neto Unit.',
+    'Total Neto ($)',
+  ]
+
+  const rows = Array.from(itemTotals.entries())
+    .sort((a, b) => {
+      const totalA = a[1].sale_price * a[1].cantidad
+      const totalB = b[1].sale_price * b[1].cantidad
+      return totalB - totalA
+    })
+    .map(([name, { cantidad, sale_price }]) => {
+      const totalVenta = Math.round(sale_price * cantidad)
+      const precioNeto = sale_price > 0 ? Math.round(sale_price / 1.19) : 0
+      const totalNeto  = sale_price > 0 ? Math.round((sale_price / 1.19) * cantidad) : 0
+      return [
+        `"${name.replace(/"/g, '""')}"`,
+        cantidad,
+        sale_price > 0 ? sale_price : 'Sin precio',
+        totalVenta > 0 ? totalVenta : 0,
+        precioNeto > 0 ? precioNeto : 'Sin precio',
+        totalNeto > 0 ? totalNeto : 0,
+      ]
+    })
+
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.join(',')),
+  ].join('\n')
+
+  const BOM = '\uFEFF'
+  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  const url = URL.createObjectURL(blob)
+  link.setAttribute('href', url)
+  link.setAttribute('download', `resumen_movimientos_${new Date().toISOString().split('T')[0]}.csv`)
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  return true
+}
+
 export function exportLogsToCSV(logs: Array<{
   created_at: string
   action: string

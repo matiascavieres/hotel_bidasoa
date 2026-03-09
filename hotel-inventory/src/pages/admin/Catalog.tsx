@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from 'react'
-import { Plus, Edit2, Upload, Search, Loader2, LayoutList, LayoutGrid, ScanBarcode, FileText, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Plus, Edit2, Upload, Search, Loader2, LayoutList, LayoutGrid, ScanBarcode, FileText, CheckCircle2, AlertTriangle, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
-import { useProducts, useCategories, useCreateProduct, useUpdateProduct } from '@/hooks/useInventory'
+import { useProducts, useCategories, useCreateProduct, useUpdateProduct, useCreateCategory } from '@/hooks/useInventory'
 import { useCreateLog } from '@/hooks/useLogs'
 import { useAuth } from '@/context/AuthContext'
 import { BarcodeScanner } from '@/components/ui/barcode-scanner'
@@ -56,6 +56,8 @@ export default function AdminCatalog() {
   })
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [isScannerOpen, setIsScannerOpen] = useState(false)
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -69,6 +71,7 @@ export default function AdminCatalog() {
   const { data: categories, isLoading: categoriesLoading } = useCategories()
   const createProduct = useCreateProduct()
   const updateProduct = useUpdateProduct()
+  const createCategoryMutation = useCreateCategory()
 
   // Import state
   const importFileRef = useRef<HTMLInputElement>(null)
@@ -99,6 +102,8 @@ export default function AdminCatalog() {
   }) as Product[]
 
   const handleOpenProductModal = (product?: Product) => {
+    setIsCreatingCategory(false)
+    setNewCategoryName('')
     if (product) {
       setEditingProduct(product)
       setFormData({
@@ -218,6 +223,21 @@ export default function AdminCatalog() {
           },
         }
       )
+    }
+  }
+
+  const handleCreateCategory = async () => {
+    const name = newCategoryName.trim()
+    if (!name) return
+    try {
+      const newCat = await createCategoryMutation.mutateAsync(name)
+      setFormData(prev => ({ ...prev, categoryId: newCat.id }))
+      setNewCategoryName('')
+      setIsCreatingCategory(false)
+      toast({ title: 'Categoría creada', description: `"${name}" fue creada y seleccionada.` })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'No se pudo crear la categoría'
+      toast({ title: 'Error', description: msg, variant: 'destructive' })
     }
   }
 
@@ -552,23 +572,67 @@ export default function AdminCatalog() {
               </div>
               <div className="space-y-2">
                 <Label>Categoria</Label>
-                <Select
-                  value={formData.categoryId}
-                  onValueChange={(v) =>
-                    setFormData({ ...formData, categoryId: v })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(categories || []).map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        {cat.name}
+                {isCreatingCategory ? (
+                  <div className="flex gap-1">
+                    <Input
+                      autoFocus
+                      placeholder="Nombre de categoría"
+                      value={newCategoryName}
+                      onChange={e => setNewCategoryName(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') handleCreateCategory()
+                        if (e.key === 'Escape') { setIsCreatingCategory(false); setNewCategoryName('') }
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="default"
+                      className="shrink-0"
+                      onClick={handleCreateCategory}
+                      disabled={createCategoryMutation.isPending || !newCategoryName.trim()}
+                    >
+                      {createCategoryMutation.isPending
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <Check className="h-4 w-4" />}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className="shrink-0"
+                      onClick={() => { setIsCreatingCategory(false); setNewCategoryName('') }}
+                    >
+                      ×
+                    </Button>
+                  </div>
+                ) : (
+                  <Select
+                    value={formData.categoryId}
+                    onValueChange={(v) => {
+                      if (v === '__new__') {
+                        setIsCreatingCategory(true)
+                      } else {
+                        setFormData({ ...formData, categoryId: v })
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(categories || []).map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="__new__" className="text-primary font-medium">
+                        + Crear nueva categoría
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
 

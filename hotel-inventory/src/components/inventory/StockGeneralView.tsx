@@ -21,6 +21,7 @@ interface ProductRow {
   name: string
   category: string
   format_ml: number
+  sale_price: number | null
   stock: Record<LocationType, { quantity_ml: number; min_stock_ml: number }>
 }
 
@@ -64,6 +65,7 @@ export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
         name: product.name,
         category: product.category?.name || 'Sin categoria',
         format_ml: product.format_ml || 750,
+        sale_price: (product as { sale_price?: number | null }).sale_price ?? null,
         stock: stock as Record<LocationType, { quantity_ml: number; min_stock_ml: number }>,
       }
     })
@@ -138,6 +140,35 @@ export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
     return (ml / formatMl).toFixed(1)
   }
 
+  // ── Stock value totals per location ─────────────────────────────────────────
+  const stockValueTotals = useMemo(() => {
+    const totals: Record<LocationType | 'total', { venta: number; neto: number }> = {
+      bodega:           { venta: 0, neto: 0 },
+      bar_casa_sanz:    { venta: 0, neto: 0 },
+      bar_hotel_bidasoa:{ venta: 0, neto: 0 },
+      total:            { venta: 0, neto: 0 },
+    }
+    for (const row of sortedRows) {
+      if (!row.sale_price || row.sale_price <= 0) continue
+      const price = row.sale_price
+      const netoUnit = price / 1.19
+      for (const loc of LOCATIONS) {
+        const { quantity_ml } = row.stock[loc]
+        if (quantity_ml <= 0) continue
+        const bottles = quantity_ml / row.format_ml
+        const venta = price * bottles
+        const neto  = netoUnit * bottles
+        totals[loc].venta += venta
+        totals[loc].neto  += neto
+        totals.total.venta += venta
+        totals.total.neto  += neto
+      }
+    }
+    return totals
+  }, [sortedRows])
+
+  const fmtCLP = (n: number) => `$${Math.round(n).toLocaleString('es-CL')}`
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -193,6 +224,22 @@ export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
           countLabel="categorías"
           className="w-[220px]"
         />
+      </div>
+
+      {/* Stock value summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+        {([
+          { key: 'bar_casa_sanz',     label: 'Casa Sanz' },
+          { key: 'bar_hotel_bidasoa', label: 'Bidasoa'   },
+          { key: 'bodega',            label: 'Bodega'    },
+          { key: 'total',             label: 'Total'     },
+        ] as const).map(({ key, label }) => (
+          <div key={key} className="rounded-md border bg-muted/30 p-3">
+            <p className="text-xs font-semibold text-muted-foreground mb-1">{label}</p>
+            <p className="text-sm font-bold tabular-nums">{fmtCLP(stockValueTotals[key].venta)}</p>
+            <p className="text-xs text-muted-foreground tabular-nums">{fmtCLP(stockValueTotals[key].neto)} neto</p>
+          </div>
+        ))}
       </div>
 
       {/* Table */}

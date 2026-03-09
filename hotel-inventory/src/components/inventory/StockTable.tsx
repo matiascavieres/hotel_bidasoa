@@ -282,11 +282,14 @@ export function StockTable({
             <div className="rounded-md border overflow-auto max-h-[calc(100vh-320px)]">
               <table className="w-full table-fixed">
                 <colgroup>
-                  <col className="w-[35%]" />
-                  <col className="w-[15%]" />
-                  <col className="w-[15%]" />
-                  <col className="w-[15%]" />
-                  <col className="w-[20%]" />
+                  <col className="w-[28%]" />
+                  <col className="w-[12%]" />
+                  <col className="w-[10%]" />
+                  <col className="w-[10%]" />
+                  <col className="w-[10%]" />
+                  <col className="w-[10%]" />
+                  <col className="w-[10%]" />
+                  <col className="w-[10%]" />
                 </colgroup>
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b bg-muted">
@@ -326,72 +329,90 @@ export function StockTable({
                         <SortIcon field="status" />
                       </span>
                     </th>
-                    <th className="px-2 py-2 text-right text-sm font-medium">Acciones</th>
+                    <th className="px-2 py-2 text-right text-sm font-medium whitespace-nowrap">Precio Venta</th>
+                    <th className="px-2 py-2 text-right text-sm font-medium whitespace-nowrap">Neto Unit.</th>
+                    <th className="px-2 py-2 text-right text-sm font-medium whitespace-nowrap">Total Venta</th>
+                    <th className="px-2 py-2 text-right text-sm font-medium whitespace-nowrap">Total Neto</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedProducts.map((product: EditingProduct) => (
-                    <tr key={product.id} className="border-b hover:bg-muted/30">
-                      <td className="px-2 py-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <ProductThumbnail imagePath={product.image_url} size={32} />
-                          <div className="min-w-0">
-                            <p className="font-medium truncate">{product.name}</p>
-                            <p className="text-sm text-muted-foreground truncate">
-                              {product.code} • {product.format_ml}ml
+                  {sortedProducts.map((product: EditingProduct) => {
+                    const bottles = product.quantity_ml / product.format_ml
+                    const price = product.sale_price ?? 0
+                    const netoUnit = price > 0 ? Math.round(price / 1.19) : 0
+                    const totalVenta = price > 0 ? Math.round(price * bottles) : 0
+                    const totalNeto  = price > 0 ? Math.round((price / 1.19) * bottles) : 0
+                    const fmtCLP = (n: number) => n > 0 ? `$${n.toLocaleString('es-CL')}` : '—'
+                    return (
+                      <tr key={product.id} className="border-b hover:bg-muted/30">
+                        <td className="px-2 py-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <ProductThumbnail imagePath={product.image_url} size={32} />
+                            <div className="min-w-0">
+                              <p className="font-medium truncate">{product.name}</p>
+                              <p className="text-sm text-muted-foreground truncate">
+                                {product.code} • {product.format_ml}ml
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-2 py-2 whitespace-nowrap">
+                          <Badge variant="outline">{product.category}</Badge>
+                        </td>
+                        <td className="px-2 py-2 text-right">
+                          <div>
+                            <p className="font-medium">
+                              {getBottles(product.quantity_ml, product.format_ml)} bot.
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {product.quantity_ml} ml
                             </p>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-2 py-2 whitespace-nowrap">
-                        <Badge variant="outline">{product.category}</Badge>
-                      </td>
-                      <td className="px-2 py-2 text-right">
-                        <div>
-                          <p className="font-medium">
-                            {getBottles(product.quantity_ml, product.format_ml)} bot.
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {product.quantity_ml} ml
-                          </p>
-                        </div>
-                      </td>
-                      <td className="px-2 py-2 text-center">
-                        <StockIndicator
-                          current={product.quantity_ml}
-                          minimum={product.min_stock_ml}
-                        />
-                      </td>
-                      <td className="px-2 py-2 text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button size="sm" variant="outline">
-                            <Plus className="mr-1 h-3 w-3" />
-                            Pedir
-                          </Button>
-                          {canEdit && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setEditingProduct(product)}
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {canEdit && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => setDeletingProduct(product)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-2 py-2 text-center">
+                          <StockIndicator
+                            current={product.quantity_ml}
+                            minimum={product.min_stock_ml}
+                          />
+                        </td>
+                        <td className="px-2 py-2 text-right text-sm tabular-nums text-muted-foreground">
+                          {fmtCLP(price)}
+                        </td>
+                        <td className="px-2 py-2 text-right text-sm tabular-nums text-muted-foreground">
+                          {fmtCLP(netoUnit)}
+                        </td>
+                        <td className="px-2 py-2 text-right text-sm tabular-nums">
+                          {fmtCLP(totalVenta)}
+                        </td>
+                        <td className="px-2 py-2 text-right text-sm tabular-nums font-semibold">
+                          {fmtCLP(totalNeto)}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
+                <tfoot className="border-t bg-muted/50">
+                  <tr>
+                    {(() => {
+                      const fmtCLP = (n: number) => n > 0 ? `$${n.toLocaleString('es-CL')}` : '—'
+                      const totalVenta = sortedProducts.reduce((s, p) => {
+                        const price = p.sale_price ?? 0
+                        return s + (price > 0 ? Math.round(price * p.quantity_ml / p.format_ml) : 0)
+                      }, 0)
+                      const totalNeto = sortedProducts.reduce((s, p) => {
+                        const price = p.sale_price ?? 0
+                        return s + (price > 0 ? Math.round((price / 1.19) * p.quantity_ml / p.format_ml) : 0)
+                      }, 0)
+                      return (
+                        <>
+                          <td colSpan={6} className="px-2 py-2 text-right text-sm font-semibold">Totales</td>
+                          <td className="px-2 py-2 text-right text-sm tabular-nums font-bold">{fmtCLP(totalVenta)}</td>
+                          <td className="px-2 py-2 text-right text-sm tabular-nums font-bold">{fmtCLP(totalNeto)}</td>
+                        </>
+                      )
+                    })()}
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>

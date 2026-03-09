@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/select'
 import { LogTimeline } from '@/components/logs/LogTimeline'
 import { LogTable } from '@/components/logs/LogTable'
-import { useLogs, exportLogsToCSV } from '@/hooks/useLogs'
+import { useLogs, exportLogsToCSV, exportApprovedItemsSummary } from '@/hooks/useLogs'
+import { useProducts } from '@/hooks/useInventory'
 import { useToast } from '@/hooks/use-toast'
 
 const actionTypes = [
@@ -45,6 +46,8 @@ export default function History() {
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
   })
+
+  const { data: products } = useProducts()
 
   const handleViewMode = (mode: HistoryViewMode) => {
     setViewMode(mode)
@@ -88,6 +91,28 @@ export default function History() {
     }
   }
 
+  const handleExportResumen = () => {
+    if (!logs || logs.length === 0) {
+      toast({ title: 'Sin datos', description: 'No hay registros para exportar.', variant: 'destructive' })
+      return
+    }
+    const formattedLogs = logs.map(log => ({
+      action: log.action,
+      created_at: log.created_at,
+      details: (log.details || {}) as Record<string, unknown>,
+    }))
+    const productsData = (products || []).map(p => ({
+      name: p.name,
+      sale_price: (p as { sale_price?: number | null }).sale_price ?? null,
+    }))
+    const exported = exportApprovedItemsSummary(formattedLogs, productsData)
+    if (exported) {
+      toast({ title: 'Exportado', description: 'Resumen de movimientos aprobados exportado.' })
+    } else {
+      toast({ title: 'Sin datos', description: 'No hay movimientos aprobados en el período seleccionado.', variant: 'destructive' })
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="space-y-3">
@@ -109,6 +134,10 @@ export default function History() {
           <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="mr-2 h-4 w-4" />
             Exportar
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportResumen}>
+            <Download className="mr-2 h-4 w-4" />
+            Resumen aprobados
           </Button>
 
           <div className="ml-auto flex items-center gap-1">

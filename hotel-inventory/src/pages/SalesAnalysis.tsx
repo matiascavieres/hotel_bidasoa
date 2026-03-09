@@ -96,7 +96,39 @@ interface EditState {
   value: string
 }
 
+// ── KPI Tooltip ────────────────────────────────────────────────────────────────
+
+interface KPITop5TooltipProps {
+  items: Array<{ receta: string; importe_total: number }>
+  title: string
+}
+
+function KPITop5Tooltip({ items, title }: KPITop5TooltipProps) {
+  return (
+    <div className="absolute top-full left-0 mt-1 z-50 w-72 rounded-md border bg-popover text-popover-foreground shadow-md p-3">
+      <p className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wide">{title}</p>
+      <div className="space-y-1.5">
+        {items.map((item, i) => {
+          const neto = Math.round(item.importe_total / 1.19)
+          return (
+            <div key={i} className="flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground w-4 shrink-0">{i + 1}.</span>
+              <span className="flex-1 truncate font-medium">{item.receta}</span>
+              <div className="text-right shrink-0">
+                <p className="tabular-nums font-semibold">{`$${item.importe_total.toLocaleString('es-CL')}`}</p>
+                <p className="tabular-nums text-muted-foreground">{`$${neto.toLocaleString('es-CL')} neto`}</p>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
+
+type HoveredKPI = 'total' | 'cocina' | 'bar' | 'vinos' | null
 
 export default function SalesAnalysis() {
   const { toast } = useToast()
@@ -109,6 +141,7 @@ export default function SalesAnalysis() {
   const [selectedGrupos,  setSelectedGrupos]  = useState<string[]>([])
   const [searchQuery,     setSearchQuery]     = useState('')
   const [showTable,       setShowTable]       = useState(false)
+  const [hoveredKPI,      setHoveredKPI]      = useState<HoveredKPI>(null)
 
   // ── Inline edit ──────────────────────────────────────────────────────────────
   const [editState, setEditState] = useState<EditState | null>(null)
@@ -179,6 +212,20 @@ export default function SalesAnalysis() {
       .slice(0, 10)
 
     const totalUnits = data.reduce((s, i) => s + i.cantidad, 0)
+    const totalImporte = data.reduce((s, i) => s + i.importe_total, 0)
+
+    // Top 5 per KPI for hover tooltips
+    const sortedByImporte = [...data].sort((a, b) => b.importe_total - a.importe_total)
+    const top5Total  = sortedByImporte.slice(0, 5)
+    const top5Cocina = sortedByImporte.filter(i => i.familia.includes('Alimentaci')).slice(0, 5)
+    const top5Bar    = sortedByImporte.filter(i => BAR_GRUPOS.includes(i.grupo)).slice(0, 5)
+    const top5Vinos  = sortedByImporte.filter(i => VINOS_GRUPOS.includes(i.grupo)).slice(0, 5)
+
+    // Group totals for % del grupo column
+    const grupoTotals = new Map<string, number>()
+    for (const item of data) {
+      grupoTotals.set(item.grupo, (grupoTotals.get(item.grupo) ?? 0) + item.importe_total)
+    }
 
     return {
       familias,
@@ -187,6 +234,12 @@ export default function SalesAnalysis() {
       maxGrupo:    grupoImporte[0]?.value ?? 1,
       top10,
       totalUnits,
+      totalImporte,
+      grupoTotals,
+      top5Total,
+      top5Cocina,
+      top5Bar,
+      top5Vinos,
     }
   }, [data])
 
@@ -254,16 +307,33 @@ export default function SalesAnalysis() {
       toast({ title: 'Sin datos', description: 'No hay registros para exportar.', variant: 'destructive' })
       return
     }
-    const headers = ['#', 'Receta', 'Grupo', 'Familia', 'Cantidad', 'Imp. Unitario', 'Imp. Total']
-    const rows = data.map((item, i) => [
-      i + 1,
-      `"${item.receta.replace(/"/g, '""')}"`,
-      `"${item.grupo}"`,
-      `"${item.familia}"`,
-      item.cantidad,
-      item.importe_unitario,
-      item.importe_total,
-    ])
+    const totalImporte = data.reduce((s, i) => s + i.importe_total, 0)
+    const grupoTotalsExport = new Map<string, number>()
+    for (const item of data) {
+      grupoTotalsExport.set(item.grupo, (grupoTotalsExport.get(item.grupo) ?? 0) + item.importe_total)
+    }
+    const headers = ['#', 'Receta', 'Grupo', 'Familia', 'Cantidad', 'Imp. Venta', 'Imp. Venta Total', 'Imp. Neto', 'Imp. Neto Total', '% del Total', '% del Grupo']
+    const rows = data.map((item, i) => {
+      const importeVentaTotal = item.cantidad * item.importe_unitario
+      const importeNeto = item.importe_unitario > 0 ? Math.round(item.importe_unitario / 1.19) : 0
+      const importeNetoTotal = item.importe_total > 0 ? Math.round(item.importe_total / 1.19) : 0
+      const pctTotal = totalImporte > 0 ? ((item.importe_total / totalImporte) * 100).toFixed(1) : '0.0'
+      const grupoTotal = grupoTotalsExport.get(item.grupo) ?? 0
+      const pctGrupo = grupoTotal > 0 ? ((item.importe_total / grupoTotal) * 100).toFixed(1) : '0.0'
+      return [
+        i + 1,
+        `"${item.receta.replace(/"/g, '""')}"`,
+        `"${item.grupo}"`,
+        `"${item.familia}"`,
+        item.cantidad,
+        item.importe_unitario,
+        importeVentaTotal,
+        importeNeto,
+        importeNetoTotal,
+        `${pctTotal}%`,
+        `${pctGrupo}%`,
+      ]
+    })
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -392,60 +462,80 @@ export default function SalesAnalysis() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
 
         {/* Total Acumulado */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xs text-muted-foreground">Importe Total</p>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <p className="text-xl font-bold tabular-nums truncate">
-              {fmtCLP(totals?.total ?? 0)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">Total acumulado</p>
-          </CardContent>
-        </Card>
+        <div className="relative" onMouseEnter={() => setHoveredKPI('total')} onMouseLeave={() => setHoveredKPI(null)}>
+          <Card className="cursor-default">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs text-muted-foreground">Importe Total</p>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <p className="text-xl font-bold tabular-nums truncate">
+                {fmtCLP(totals?.total ?? 0)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Total acumulado</p>
+            </CardContent>
+          </Card>
+          {hoveredKPI === 'total' && chartData.top5Total.length > 0 && (
+            <KPITop5Tooltip items={chartData.top5Total} title="Top 5 global" />
+          )}
+        </div>
 
         {/* Vendido Cocina */}
-        <Card className={familiaPreset === 'cocina' ? 'ring-2 ring-primary' : ''}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xs text-muted-foreground">Cocina</p>
-              <UtensilsCrossed className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <p className="text-xl font-bold tabular-nums truncate">
-              {fmtCLP(totals?.cocina ?? 0)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">Alimentación Sanz</p>
-          </CardContent>
-        </Card>
+        <div className="relative" onMouseEnter={() => setHoveredKPI('cocina')} onMouseLeave={() => setHoveredKPI(null)}>
+          <Card className={familiaPreset === 'cocina' ? 'ring-2 ring-primary cursor-default' : 'cursor-default'}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs text-muted-foreground">Cocina</p>
+                <UtensilsCrossed className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <p className="text-xl font-bold tabular-nums truncate">
+                {fmtCLP(totals?.cocina ?? 0)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Alimentación Sanz</p>
+            </CardContent>
+          </Card>
+          {hoveredKPI === 'cocina' && chartData.top5Cocina.length > 0 && (
+            <KPITop5Tooltip items={chartData.top5Cocina} title="Top 5 Cocina" />
+          )}
+        </div>
 
         {/* Vendido Bar */}
-        <Card className={familiaPreset === 'bar' ? 'ring-2 ring-primary' : ''}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xs text-muted-foreground">Bar</p>
-              <Store className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <p className="text-xl font-bold tabular-nums truncate">
-              {fmtCLP(totals?.bar ?? 0)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">Bebestibles Bar</p>
-          </CardContent>
-        </Card>
+        <div className="relative" onMouseEnter={() => setHoveredKPI('bar')} onMouseLeave={() => setHoveredKPI(null)}>
+          <Card className={familiaPreset === 'bar' ? 'ring-2 ring-primary cursor-default' : 'cursor-default'}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs text-muted-foreground">Bar</p>
+                <Store className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <p className="text-xl font-bold tabular-nums truncate">
+                {fmtCLP(totals?.bar ?? 0)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Bebestibles Bar</p>
+            </CardContent>
+          </Card>
+          {hoveredKPI === 'bar' && chartData.top5Bar.length > 0 && (
+            <KPITop5Tooltip items={chartData.top5Bar} title="Top 5 Bar" />
+          )}
+        </div>
 
         {/* Vendido Vinos */}
-        <Card className={familiaPreset === 'vinos' ? 'ring-2 ring-primary' : ''}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xs text-muted-foreground">Vinos</p>
-              <Wine className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <p className="text-xl font-bold tabular-nums truncate">
-              {fmtCLP(totals?.vinos ?? 0)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">Bebestibles Sanz</p>
-          </CardContent>
-        </Card>
+        <div className="relative" onMouseEnter={() => setHoveredKPI('vinos')} onMouseLeave={() => setHoveredKPI(null)}>
+          <Card className={familiaPreset === 'vinos' ? 'ring-2 ring-primary cursor-default' : 'cursor-default'}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs text-muted-foreground">Vinos</p>
+                <Wine className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <p className="text-xl font-bold tabular-nums truncate">
+                {fmtCLP(totals?.vinos ?? 0)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Bebestibles Sanz</p>
+            </CardContent>
+          </Card>
+          {hoveredKPI === 'vinos' && chartData.top5Vinos.length > 0 && (
+            <KPITop5Tooltip items={chartData.top5Vinos} title="Top 5 Vinos" />
+          )}
+        </div>
       </div>
 
       {/* ── C: Gráficos — Donut + Familia ────────────────────────────────────── */}
@@ -675,31 +765,59 @@ export default function SalesAnalysis() {
                     <tr className="border-b bg-muted/50">
                       <th className="px-2 py-2 text-left w-8">#</th>
                       <th className="px-2 py-2 text-left">Receta</th>
-                      <th className="px-2 py-2 text-left">Grupo</th>
-                      <th className="px-2 py-2 text-left">Familia</th>
-                      <th className="px-2 py-2 text-right">Cantidad</th>
-                      <th className="px-2 py-2 text-right">Imp. Unit.</th>
-                      <th className="px-2 py-2 text-right">Imp. Total</th>
+                      <th className="px-2 py-2 text-right whitespace-nowrap">Cantidad</th>
+                      <th className="px-2 py-2 text-right whitespace-nowrap">Imp. Venta</th>
+                      <th className="px-2 py-2 text-right whitespace-nowrap">Imp. Venta Total</th>
+                      <th className="px-2 py-2 text-right whitespace-nowrap">Imp. Neto</th>
+                      <th className="px-2 py-2 text-right whitespace-nowrap">Imp. Neto Total</th>
+                      <th className="px-2 py-2 text-right whitespace-nowrap">% Total</th>
+                      <th className="px-2 py-2 text-right whitespace-nowrap">% Grupo</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {data.map((item, index) => (
-                      <tr key={item.id} className="border-b hover:bg-muted/30">
-                        <td className="px-2 py-2 text-muted-foreground">{index + 1}</td>
-                        <td className="px-2 py-2 font-medium">{item.receta}</td>
-                        <td className="px-2 py-2">
-                          <Badge variant="outline">{item.grupo}</Badge>
-                        </td>
-                        <td className="px-2 py-2 text-muted-foreground text-xs">{item.familia}</td>
-                        <td className="px-2 py-2 text-right tabular-nums">{fmt(item.cantidad)}</td>
-                        <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">
-                          {item.importe_unitario > 0 ? fmtCLP(item.importe_unitario) : '—'}
-                        </td>
-                        <td className="px-2 py-2 text-right tabular-nums font-semibold">
-                          {fmtCLP(item.importe_total)}
-                        </td>
-                      </tr>
-                    ))}
+                    {data.map((item, index) => {
+                      const importeVentaTotal = item.cantidad * item.importe_unitario
+                      const importeNeto = item.importe_unitario > 0 ? Math.round(item.importe_unitario / 1.19) : 0
+                      const importeNetoTotal = item.importe_total > 0 ? Math.round(item.importe_total / 1.19) : 0
+                      const pctTotal = chartData.totalImporte > 0
+                        ? ((item.importe_total / chartData.totalImporte) * 100).toFixed(1)
+                        : '0.0'
+                      const grupoTotal = chartData.grupoTotals.get(item.grupo) ?? 0
+                      const pctGrupo = grupoTotal > 0
+                        ? ((item.importe_total / grupoTotal) * 100).toFixed(1)
+                        : '0.0'
+                      return (
+                        <tr key={item.id} className="border-b hover:bg-muted/30">
+                          <td className="px-2 py-2 text-muted-foreground">{index + 1}</td>
+                          <td className="px-2 py-2">
+                            <p className="font-medium">{item.receta}</p>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <Badge variant="outline" className="text-[10px] h-4 px-1">{item.grupo}</Badge>
+                              {item.familia && <span className="text-[10px] text-muted-foreground">{item.familia}</span>}
+                            </div>
+                          </td>
+                          <td className="px-2 py-2 text-right tabular-nums">{fmt(item.cantidad)}</td>
+                          <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">
+                            {item.importe_unitario > 0 ? fmtCLP(item.importe_unitario) : '—'}
+                          </td>
+                          <td className="px-2 py-2 text-right tabular-nums">
+                            {importeVentaTotal > 0 ? fmtCLP(importeVentaTotal) : '—'}
+                          </td>
+                          <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">
+                            {importeNeto > 0 ? fmtCLP(importeNeto) : '—'}
+                          </td>
+                          <td className="px-2 py-2 text-right tabular-nums font-semibold">
+                            {importeNetoTotal > 0 ? fmtCLP(importeNetoTotal) : '—'}
+                          </td>
+                          <td className="px-2 py-2 text-right tabular-nums text-muted-foreground text-xs">
+                            {pctTotal}%
+                          </td>
+                          <td className="px-2 py-2 text-right tabular-nums text-muted-foreground text-xs">
+                            {pctGrupo}%
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
