@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, type ReactNode } from 'react'
 import {
   Download, Search, X, TrendingUp, Package,
-  ChevronDownIcon, ChevronUpIcon,
+  ChevronDownIcon, ChevronUpIcon, ChevronsUpDown,
   RotateCcw, Pencil, Check, Store, Wine, UtensilsCrossed,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -126,6 +126,17 @@ function KPITop5Tooltip({ items, title }: KPITop5TooltipProps) {
   )
 }
 
+// ── Sort helpers ───────────────────────────────────────────────────────────────
+
+type SortCol = 'receta' | 'cantidad' | 'importe_unitario' | 'importe_total' | 'neto' | 'netoTotal' | 'pctTotal' | 'pctGrupo'
+
+function SortIcon({ col, current, dir }: { col: SortCol; current: SortCol; dir: 'asc' | 'desc' }) {
+  if (col !== current) return <ChevronsUpDown className="h-3 w-3 ml-1 text-muted-foreground/50 inline" />
+  return dir === 'asc'
+    ? <ChevronUpIcon className="h-3 w-3 ml-1 inline" />
+    : <ChevronDownIcon className="h-3 w-3 ml-1 inline" />
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 type HoveredKPI = 'total' | 'cocina' | 'bar' | 'vinos' | null
@@ -140,8 +151,9 @@ export default function SalesAnalysis() {
   const [familiaPreset,   setFamiliaPreset]   = useState<FamiliaPreset>('all')
   const [selectedGrupos,  setSelectedGrupos]  = useState<string[]>([])
   const [searchQuery,     setSearchQuery]     = useState('')
-  const [showTable,       setShowTable]       = useState(false)
   const [hoveredKPI,      setHoveredKPI]      = useState<HoveredKPI>(null)
+  const [sortCol,         setSortCol]         = useState<SortCol>('importe_total')
+  const [sortDir,         setSortDir]         = useState<'asc' | 'desc'>('desc')
 
   // ── Inline edit ──────────────────────────────────────────────────────────────
   const [editState, setEditState] = useState<EditState | null>(null)
@@ -243,6 +255,29 @@ export default function SalesAnalysis() {
     }
   }, [data])
 
+  // ── Sorted data ───────────────────────────────────────────────────────────────
+  const sortedData = useMemo(() => {
+    return [...data].sort((a, b) => {
+      let va: number | string
+      let vb: number | string
+      switch (sortCol) {
+        case 'receta':           va = a.receta; vb = b.receta; break
+        case 'cantidad':         va = a.cantidad; vb = b.cantidad; break
+        case 'importe_unitario': va = a.importe_unitario; vb = b.importe_unitario; break
+        case 'importe_total':    va = a.importe_total; vb = b.importe_total; break
+        case 'neto':             va = Math.round(a.importe_unitario / 1.19); vb = Math.round(b.importe_unitario / 1.19); break
+        case 'netoTotal':        va = Math.round(a.importe_total / 1.19); vb = Math.round(b.importe_total / 1.19); break
+        case 'pctTotal':         va = a.importe_total; vb = b.importe_total; break
+        case 'pctGrupo':         va = a.importe_total / (chartData.grupoTotals.get(a.grupo) ?? 1); vb = b.importe_total / (chartData.grupoTotals.get(b.grupo) ?? 1); break
+        default:                 va = a.importe_total; vb = b.importe_total
+      }
+      if (typeof va === 'string') {
+        return sortDir === 'asc' ? va.localeCompare(vb as string, 'es') : (vb as string).localeCompare(va, 'es')
+      }
+      return sortDir === 'asc' ? (va as number) - (vb as number) : (vb as number) - (va as number)
+    })
+  }, [data, sortCol, sortDir, chartData.grupoTotals])
+
   // ── Handlers ──────────────────────────────────────────────────────────────────
   const hasFilters = selectedGrupos.length > 0 || searchQuery || familiaPreset !== 'all'
 
@@ -300,6 +335,11 @@ export default function SalesAnalysis() {
   }
 
   const cancelEdit = () => setEditState(null)
+
+  const handleSort = (col: SortCol) => {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortCol(col); setSortDir('desc') }
+  }
 
   // Export
   const handleExport = () => {
@@ -458,84 +498,83 @@ export default function SalesAnalysis() {
         </div>
       </div>
 
-      {/* ── B: KPI Cards ──────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* ── B: KPI Block unificado ────────────────────────────────────────────── */}
+      <div className="relative">
+        <Card className="cursor-default">
+          <CardContent className="p-0">
+            <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-border">
 
-        {/* Total Acumulado */}
-        <div className="relative" onMouseEnter={() => setHoveredKPI('total')} onMouseLeave={() => setHoveredKPI(null)}>
-          <Card className="cursor-default">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-xs text-muted-foreground">Importe Total</p>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              {/* Total */}
+              <div
+                className="p-4 relative"
+                onMouseEnter={() => setHoveredKPI('total')}
+                onMouseLeave={() => setHoveredKPI(null)}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs text-muted-foreground">Importe Total</p>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="text-xl font-bold tabular-nums truncate">{fmtCLP(totals?.total ?? 0)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Total acumulado</p>
+                {hoveredKPI === 'total' && chartData.top5Total.length > 0 && (
+                  <KPITop5Tooltip items={chartData.top5Total} title="Top 5 global" />
+                )}
               </div>
-              <p className="text-xl font-bold tabular-nums truncate">
-                {fmtCLP(totals?.total ?? 0)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">Total acumulado</p>
-            </CardContent>
-          </Card>
-          {hoveredKPI === 'total' && chartData.top5Total.length > 0 && (
-            <KPITop5Tooltip items={chartData.top5Total} title="Top 5 global" />
-          )}
-        </div>
 
-        {/* Vendido Cocina */}
-        <div className="relative" onMouseEnter={() => setHoveredKPI('cocina')} onMouseLeave={() => setHoveredKPI(null)}>
-          <Card className={familiaPreset === 'cocina' ? 'ring-2 ring-primary cursor-default' : 'cursor-default'}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-xs text-muted-foreground">Cocina</p>
-                <UtensilsCrossed className="h-4 w-4 text-muted-foreground" />
+              {/* Cocina */}
+              <div
+                className={`p-4 relative ${familiaPreset === 'cocina' ? 'bg-primary/5' : ''}`}
+                onMouseEnter={() => setHoveredKPI('cocina')}
+                onMouseLeave={() => setHoveredKPI(null)}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs text-muted-foreground">Cocina</p>
+                  <UtensilsCrossed className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="text-xl font-bold tabular-nums truncate">{fmtCLP(totals?.cocina ?? 0)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Alimentación Sanz</p>
+                {hoveredKPI === 'cocina' && chartData.top5Cocina.length > 0 && (
+                  <KPITop5Tooltip items={chartData.top5Cocina} title="Top 5 Cocina" />
+                )}
               </div>
-              <p className="text-xl font-bold tabular-nums truncate">
-                {fmtCLP(totals?.cocina ?? 0)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">Alimentación Sanz</p>
-            </CardContent>
-          </Card>
-          {hoveredKPI === 'cocina' && chartData.top5Cocina.length > 0 && (
-            <KPITop5Tooltip items={chartData.top5Cocina} title="Top 5 Cocina" />
-          )}
-        </div>
 
-        {/* Vendido Bar */}
-        <div className="relative" onMouseEnter={() => setHoveredKPI('bar')} onMouseLeave={() => setHoveredKPI(null)}>
-          <Card className={familiaPreset === 'bar' ? 'ring-2 ring-primary cursor-default' : 'cursor-default'}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-xs text-muted-foreground">Bar</p>
-                <Store className="h-4 w-4 text-muted-foreground" />
+              {/* Bar */}
+              <div
+                className={`p-4 relative ${familiaPreset === 'bar' ? 'bg-primary/5' : ''}`}
+                onMouseEnter={() => setHoveredKPI('bar')}
+                onMouseLeave={() => setHoveredKPI(null)}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs text-muted-foreground">Bar</p>
+                  <Store className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="text-xl font-bold tabular-nums truncate">{fmtCLP(totals?.bar ?? 0)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Bebestibles Bar</p>
+                {hoveredKPI === 'bar' && chartData.top5Bar.length > 0 && (
+                  <KPITop5Tooltip items={chartData.top5Bar} title="Top 5 Bar" />
+                )}
               </div>
-              <p className="text-xl font-bold tabular-nums truncate">
-                {fmtCLP(totals?.bar ?? 0)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">Bebestibles Bar</p>
-            </CardContent>
-          </Card>
-          {hoveredKPI === 'bar' && chartData.top5Bar.length > 0 && (
-            <KPITop5Tooltip items={chartData.top5Bar} title="Top 5 Bar" />
-          )}
-        </div>
 
-        {/* Vendido Vinos */}
-        <div className="relative" onMouseEnter={() => setHoveredKPI('vinos')} onMouseLeave={() => setHoveredKPI(null)}>
-          <Card className={familiaPreset === 'vinos' ? 'ring-2 ring-primary cursor-default' : 'cursor-default'}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-xs text-muted-foreground">Vinos</p>
-                <Wine className="h-4 w-4 text-muted-foreground" />
+              {/* Vinos */}
+              <div
+                className={`p-4 relative ${familiaPreset === 'vinos' ? 'bg-primary/5' : ''}`}
+                onMouseEnter={() => setHoveredKPI('vinos')}
+                onMouseLeave={() => setHoveredKPI(null)}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs text-muted-foreground">Vinos</p>
+                  <Wine className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="text-xl font-bold tabular-nums truncate">{fmtCLP(totals?.vinos ?? 0)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Bebestibles Sanz</p>
+                {hoveredKPI === 'vinos' && chartData.top5Vinos.length > 0 && (
+                  <KPITop5Tooltip items={chartData.top5Vinos} title="Top 5 Vinos" />
+                )}
               </div>
-              <p className="text-xl font-bold tabular-nums truncate">
-                {fmtCLP(totals?.vinos ?? 0)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">Bebestibles Sanz</p>
-            </CardContent>
-          </Card>
-          {hoveredKPI === 'vinos' && chartData.top5Vinos.length > 0 && (
-            <KPITop5Tooltip items={chartData.top5Vinos} title="Top 5 Vinos" />
-          )}
-        </div>
+
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* ── C: Gráficos — Donut + Familia ────────────────────────────────────── */}
@@ -574,256 +613,230 @@ export default function SalesAnalysis() {
         </Card>
       </div>
 
-      {/* ── D: Top 10 Editable + Top Grupos por Importe ──────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-        {/* Top 10 Recetas — EDITABLE */}
-        <Card>
-          <CardHeader className="pb-2 pt-4 px-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-semibold">
-                Top 10 Recetas
-              </CardTitle>
-              {isSingleMonth && (
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Pencil className="h-3 w-3" />
-                  Editable
-                </span>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            {isLoading ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Cargando…</p>
-            ) : chartData.top10.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Sin datos para el período</p>
-            ) : (
-              <div className="rounded-md border overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th className="px-2 py-2 text-left w-8">#</th>
-                      <th className="px-2 py-2 text-left">Receta</th>
-                      <th className="px-2 py-2 text-right whitespace-nowrap">Imp. Unit.</th>
-                      <th className="px-2 py-2 text-right">Cantidad</th>
-                      <th className="px-2 py-2 text-right">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {chartData.top10.map((item, index) => {
-                      const rankClass = RANK_COLORS[index] ?? 'bg-muted text-muted-foreground'
-                      const isEditing = isSingleMonth && item.isSingleRecord
-                      const editingCantidad = editState?.id === item.id && editState?.field === 'cantidad'
-                      const editingUnit     = editState?.id === item.id && editState?.field === 'importe_unitario'
-                      const computedTotal   = item.cantidad * item.importe_unitario
-
-                      return (
-                        <tr key={item.id} className="border-b hover:bg-muted/30">
-                          <td className="px-2 py-1.5">
-                            <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${rankClass}`}>
-                              {index + 1}
-                            </span>
-                          </td>
-                          <td className="px-2 py-1.5 max-w-[160px]">
-                            <p className="font-medium truncate leading-tight">{item.receta}</p>
-                            <Badge variant="outline" className="text-[10px] h-4 px-1 mt-0.5">{item.grupo}</Badge>
-                          </td>
-
-                          {/* Imp. Unitario — editable */}
-                          <td
-                            className={`px-2 py-1.5 text-right tabular-nums ${isEditing ? 'cursor-pointer hover:bg-muted/50' : ''}`}
-                            onClick={() => isEditing && !editingUnit && startEdit(item.id, 'importe_unitario', item.importe_unitario)}
-                          >
-                            {editingUnit ? (
-                              <div className="flex items-center justify-end gap-1">
-                                <span className="text-xs text-muted-foreground">$</span>
-                                <input
-                                  ref={inputRef}
-                                  type="number"
-                                  min={0}
-                                  value={editState!.value}
-                                  onChange={e => setEditState(s => s && { ...s, value: e.target.value })}
-                                  onBlur={commitEdit}
-                                  onKeyDown={e => {
-                                    if (e.key === 'Enter') commitEdit()
-                                    if (e.key === 'Escape') cancelEdit()
-                                  }}
-                                  className="w-20 text-right border rounded px-1 py-0 text-sm focus:outline-none focus:ring-1 focus:ring-primary bg-background"
-                                />
-                                <Button size="icon" variant="ghost" className="h-5 w-5 p-0" onClick={commitEdit}>
-                                  <Check className="h-3 w-3 text-green-600" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <span className={`${isEditing ? 'hover:underline hover:text-primary cursor-pointer' : ''}`}>
-                                {item.importe_unitario > 0 ? fmtCLP(item.importe_unitario) : '—'}
-                                {isEditing && <Pencil className="inline ml-1 h-2.5 w-2.5 text-muted-foreground" />}
-                              </span>
-                            )}
-                          </td>
-
-                          {/* Cantidad — editable */}
-                          <td
-                            className={`px-2 py-1.5 text-right tabular-nums ${isEditing ? 'cursor-pointer hover:bg-muted/50' : ''}`}
-                            onClick={() => isEditing && !editingCantidad && startEdit(item.id, 'cantidad', item.cantidad)}
-                          >
-                            {editingCantidad ? (
-                              <div className="flex items-center justify-end gap-1">
-                                <input
-                                  ref={inputRef}
-                                  type="number"
-                                  min={0}
-                                  value={editState!.value}
-                                  onChange={e => setEditState(s => s && { ...s, value: e.target.value })}
-                                  onBlur={commitEdit}
-                                  onKeyDown={e => {
-                                    if (e.key === 'Enter') commitEdit()
-                                    if (e.key === 'Escape') cancelEdit()
-                                  }}
-                                  className="w-16 text-right border rounded px-1 py-0 text-sm focus:outline-none focus:ring-1 focus:ring-primary bg-background"
-                                />
-                                <Button size="icon" variant="ghost" className="h-5 w-5 p-0" onClick={commitEdit}>
-                                  <Check className="h-3 w-3 text-green-600" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <span className={`${isEditing ? 'hover:underline hover:text-primary cursor-pointer' : ''}`}>
-                                {fmt(item.cantidad)}
-                                {isEditing && <Pencil className="inline ml-1 h-2.5 w-2.5 text-muted-foreground" />}
-                              </span>
-                            )}
-                          </td>
-
-                          {/* Importe Total — always computed */}
-                          <td className="px-2 py-1.5 text-right tabular-nums font-semibold">
-                            {computedTotal > 0 ? fmtCLP(computedTotal) : fmtCLP(item.importe_total)}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {!isSingleMonth && (
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                La edición directa sólo está disponible para un mes específico.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Top Grupos por Importe */}
-        <Card>
-          <CardHeader className="pb-2 pt-4 px-4">
-            <CardTitle className="text-base font-semibold">Top Grupos por Importe</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <SalesFamiliaChart
-              data={chartData.grupoImporte}
-              maxValue={chartData.maxGrupo}
-              showImporte={true}
-            />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ── E: Tabla colapsable ──────────────────────────────────────────────── */}
+      {/* ── D: Top Grupos por Importe (full-width) ───────────────────────────── */}
       <Card>
-        <CardHeader className="py-3 px-4">
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-base font-semibold">Top Grupos por Importe</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          <SalesFamiliaChart
+            data={chartData.grupoImporte}
+            maxValue={chartData.maxGrupo}
+            showImporte={true}
+          />
+        </CardContent>
+      </Card>
+
+      {/* ── E: Tabla principal — todos los registros ─────────────────────────── */}
+      <Card>
+        <CardHeader className="pb-2 pt-4 px-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base font-semibold">
-              Tabla detallada
+              Recetas
               {data.length > 0 && (
                 <span className="text-sm font-normal text-muted-foreground ml-2">
                   ({data.length} registros)
                 </span>
               )}
             </CardTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowTable(v => !v)}
-              className="h-8 w-8 p-0"
-            >
-              {showTable ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />}
-            </Button>
+            {isSingleMonth && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Pencil className="h-3 w-3" />
+                Editable
+              </span>
+            )}
           </div>
         </CardHeader>
+        <CardContent className="px-4 pb-4 pt-0">
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Cargando…</p>
+          ) : sortedData.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Sin datos para el período seleccionado.</p>
+          ) : (
+            <div className="rounded-md border overflow-x-auto max-h-[70vh] overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 z-10">
+                  <tr className="border-b bg-muted">
+                    <th className="px-2 py-2 text-left w-8 bg-muted">#</th>
+                    <th
+                      className="px-2 py-2 text-left bg-muted cursor-pointer hover:bg-muted/70 select-none whitespace-nowrap"
+                      onClick={() => handleSort('receta')}
+                    >
+                      Receta <SortIcon col="receta" current={sortCol} dir={sortDir} />
+                    </th>
+                    <th
+                      className="px-2 py-2 text-right bg-muted cursor-pointer hover:bg-muted/70 select-none whitespace-nowrap"
+                      onClick={() => handleSort('cantidad')}
+                    >
+                      Cantidad <SortIcon col="cantidad" current={sortCol} dir={sortDir} />
+                    </th>
+                    <th
+                      className="px-2 py-2 text-right bg-muted cursor-pointer hover:bg-muted/70 select-none whitespace-nowrap"
+                      onClick={() => handleSort('importe_unitario')}
+                    >
+                      Imp. Venta <SortIcon col="importe_unitario" current={sortCol} dir={sortDir} />
+                    </th>
+                    <th
+                      className="px-2 py-2 text-right bg-muted cursor-pointer hover:bg-muted/70 select-none whitespace-nowrap"
+                      onClick={() => handleSort('importe_total')}
+                    >
+                      Imp. Venta Total <SortIcon col="importe_total" current={sortCol} dir={sortDir} />
+                    </th>
+                    <th
+                      className="px-2 py-2 text-right bg-muted cursor-pointer hover:bg-muted/70 select-none whitespace-nowrap"
+                      onClick={() => handleSort('neto')}
+                    >
+                      Imp. Neto <SortIcon col="neto" current={sortCol} dir={sortDir} />
+                    </th>
+                    <th
+                      className="px-2 py-2 text-right bg-muted cursor-pointer hover:bg-muted/70 select-none whitespace-nowrap"
+                      onClick={() => handleSort('netoTotal')}
+                    >
+                      Imp. Neto Total <SortIcon col="netoTotal" current={sortCol} dir={sortDir} />
+                    </th>
+                    <th
+                      className="px-2 py-2 text-right bg-muted cursor-pointer hover:bg-muted/70 select-none whitespace-nowrap"
+                      onClick={() => handleSort('pctTotal')}
+                    >
+                      % Total <SortIcon col="pctTotal" current={sortCol} dir={sortDir} />
+                    </th>
+                    <th
+                      className="px-2 py-2 text-right bg-muted cursor-pointer hover:bg-muted/70 select-none whitespace-nowrap"
+                      onClick={() => handleSort('pctGrupo')}
+                    >
+                      % Grupo <SortIcon col="pctGrupo" current={sortCol} dir={sortDir} />
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedData.map((item, index) => {
+                    const rankClass = RANK_COLORS[index] ?? ''
+                    const isEditing = isSingleMonth && item.isSingleRecord
+                    const editingCantidad = editState?.id === item.id && editState?.field === 'cantidad'
+                    const editingUnit     = editState?.id === item.id && editState?.field === 'importe_unitario'
+                    const importeVentaTotal = item.cantidad * item.importe_unitario
+                    const importeNeto = item.importe_unitario > 0 ? Math.round(item.importe_unitario / 1.19) : 0
+                    const importeNetoTotal = item.importe_total > 0 ? Math.round(item.importe_total / 1.19) : 0
+                    const pctTotal = chartData.totalImporte > 0
+                      ? ((item.importe_total / chartData.totalImporte) * 100).toFixed(1)
+                      : '0.0'
+                    const grupoTotal = chartData.grupoTotals.get(item.grupo) ?? 0
+                    const pctGrupo = grupoTotal > 0
+                      ? ((item.importe_total / grupoTotal) * 100).toFixed(1)
+                      : '0.0'
 
-        {showTable && (
-          <CardContent className="px-4 pb-4 pt-0">
-            {isLoading ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Cargando…</p>
-            ) : data.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Sin datos para el período seleccionado.</p>
-            ) : (
-              <div className="rounded-md border overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th className="px-2 py-2 text-left w-8">#</th>
-                      <th className="px-2 py-2 text-left">Receta</th>
-                      <th className="px-2 py-2 text-right whitespace-nowrap">Cantidad</th>
-                      <th className="px-2 py-2 text-right whitespace-nowrap">Imp. Venta</th>
-                      <th className="px-2 py-2 text-right whitespace-nowrap">Imp. Venta Total</th>
-                      <th className="px-2 py-2 text-right whitespace-nowrap">Imp. Neto</th>
-                      <th className="px-2 py-2 text-right whitespace-nowrap">Imp. Neto Total</th>
-                      <th className="px-2 py-2 text-right whitespace-nowrap">% Total</th>
-                      <th className="px-2 py-2 text-right whitespace-nowrap">% Grupo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.map((item, index) => {
-                      const importeVentaTotal = item.cantidad * item.importe_unitario
-                      const importeNeto = item.importe_unitario > 0 ? Math.round(item.importe_unitario / 1.19) : 0
-                      const importeNetoTotal = item.importe_total > 0 ? Math.round(item.importe_total / 1.19) : 0
-                      const pctTotal = chartData.totalImporte > 0
-                        ? ((item.importe_total / chartData.totalImporte) * 100).toFixed(1)
-                        : '0.0'
-                      const grupoTotal = chartData.grupoTotals.get(item.grupo) ?? 0
-                      const pctGrupo = grupoTotal > 0
-                        ? ((item.importe_total / grupoTotal) * 100).toFixed(1)
-                        : '0.0'
-                      return (
-                        <tr key={item.id} className="border-b hover:bg-muted/30">
-                          <td className="px-2 py-2 text-muted-foreground">{index + 1}</td>
-                          <td className="px-2 py-2">
-                            <p className="font-medium">{item.receta}</p>
-                            <div className="flex items-center gap-1 mt-0.5">
-                              <Badge variant="outline" className="text-[10px] h-4 px-1">{item.grupo}</Badge>
-                              {item.familia && <span className="text-[10px] text-muted-foreground">{item.familia}</span>}
+                    return (
+                      <tr key={item.id} className="border-b hover:bg-muted/30">
+                        <td className="px-2 py-1.5">
+                          {rankClass ? (
+                            <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${rankClass}`}>
+                              {index + 1}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">{index + 1}</span>
+                          )}
+                        </td>
+                        <td className="px-2 py-1.5 max-w-[200px]">
+                          <p className="font-medium truncate leading-tight">{item.receta}</p>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <Badge variant="outline" className="text-[10px] h-4 px-1">{item.grupo}</Badge>
+                            {item.familia && <span className="text-[10px] text-muted-foreground truncate">{item.familia}</span>}
+                          </div>
+                        </td>
+
+                        {/* Cantidad — editable */}
+                        <td
+                          className={`px-2 py-1.5 text-right tabular-nums ${isEditing ? 'cursor-pointer hover:bg-muted/50' : ''}`}
+                          onClick={() => isEditing && !editingCantidad && startEdit(item.id, 'cantidad', item.cantidad)}
+                        >
+                          {editingCantidad ? (
+                            <div className="flex items-center justify-end gap-1">
+                              <input
+                                ref={inputRef}
+                                type="number"
+                                min={0}
+                                value={editState!.value}
+                                onChange={e => setEditState(s => s && { ...s, value: e.target.value })}
+                                onBlur={commitEdit}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') commitEdit()
+                                  if (e.key === 'Escape') cancelEdit()
+                                }}
+                                className="w-16 text-right border rounded px-1 py-0 text-sm focus:outline-none focus:ring-1 focus:ring-primary bg-background"
+                              />
+                              <Button size="icon" variant="ghost" className="h-5 w-5 p-0" onClick={commitEdit}>
+                                <Check className="h-3 w-3 text-green-600" />
+                              </Button>
                             </div>
-                          </td>
-                          <td className="px-2 py-2 text-right tabular-nums">{fmt(item.cantidad)}</td>
-                          <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">
-                            {item.importe_unitario > 0 ? fmtCLP(item.importe_unitario) : '—'}
-                          </td>
-                          <td className="px-2 py-2 text-right tabular-nums">
-                            {importeVentaTotal > 0 ? fmtCLP(importeVentaTotal) : '—'}
-                          </td>
-                          <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">
-                            {importeNeto > 0 ? fmtCLP(importeNeto) : '—'}
-                          </td>
-                          <td className="px-2 py-2 text-right tabular-nums font-semibold">
-                            {importeNetoTotal > 0 ? fmtCLP(importeNetoTotal) : '—'}
-                          </td>
-                          <td className="px-2 py-2 text-right tabular-nums text-muted-foreground text-xs">
-                            {pctTotal}%
-                          </td>
-                          <td className="px-2 py-2 text-right tabular-nums text-muted-foreground text-xs">
-                            {pctGrupo}%
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        )}
+                          ) : (
+                            <span className={`${isEditing ? 'hover:underline hover:text-primary cursor-pointer' : ''}`}>
+                              {fmt(item.cantidad)}
+                              {isEditing && <Pencil className="inline ml-1 h-2.5 w-2.5 text-muted-foreground" />}
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Imp. Unitario — editable */}
+                        <td
+                          className={`px-2 py-1.5 text-right tabular-nums ${isEditing ? 'cursor-pointer hover:bg-muted/50' : ''}`}
+                          onClick={() => isEditing && !editingUnit && startEdit(item.id, 'importe_unitario', item.importe_unitario)}
+                        >
+                          {editingUnit ? (
+                            <div className="flex items-center justify-end gap-1">
+                              <span className="text-xs text-muted-foreground">$</span>
+                              <input
+                                ref={inputRef}
+                                type="number"
+                                min={0}
+                                value={editState!.value}
+                                onChange={e => setEditState(s => s && { ...s, value: e.target.value })}
+                                onBlur={commitEdit}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') commitEdit()
+                                  if (e.key === 'Escape') cancelEdit()
+                                }}
+                                className="w-20 text-right border rounded px-1 py-0 text-sm focus:outline-none focus:ring-1 focus:ring-primary bg-background"
+                              />
+                              <Button size="icon" variant="ghost" className="h-5 w-5 p-0" onClick={commitEdit}>
+                                <Check className="h-3 w-3 text-green-600" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className={`text-muted-foreground ${isEditing ? 'hover:underline hover:text-primary cursor-pointer' : ''}`}>
+                              {item.importe_unitario > 0 ? fmtCLP(item.importe_unitario) : '—'}
+                              {isEditing && <Pencil className="inline ml-1 h-2.5 w-2.5 text-muted-foreground" />}
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="px-2 py-1.5 text-right tabular-nums">
+                          {importeVentaTotal > 0 ? fmtCLP(importeVentaTotal) : '—'}
+                        </td>
+                        <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">
+                          {importeNeto > 0 ? fmtCLP(importeNeto) : '—'}
+                        </td>
+                        <td className="px-2 py-1.5 text-right tabular-nums font-semibold">
+                          {importeNetoTotal > 0 ? fmtCLP(importeNetoTotal) : '—'}
+                        </td>
+                        <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground text-xs">
+                          {pctTotal}%
+                        </td>
+                        <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground text-xs">
+                          {pctGrupo}%
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {!isSingleMonth && data.length > 0 && (
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              La edición directa sólo está disponible para un mes específico.
+            </p>
+          )}
+        </CardContent>
       </Card>
 
     </div>
