@@ -239,6 +239,17 @@ export default function SalesAnalysis() {
       grupoTotals.set(item.grupo, (grupoTotals.get(item.grupo) ?? 0) + item.importe_total)
     }
 
+    // Top 5 per familia and per grupo for bar chart hover tooltips
+    const familiaTop5Raw = new Map<string, Array<{ receta: string; importe_total: number }>>()
+    const grupoTop5Raw   = new Map<string, Array<{ receta: string; importe_total: number }>>()
+    for (const item of data) {
+      const fk = item.familia || 'Sin familia'
+      const fa = familiaTop5Raw.get(fk) ?? []; fa.push({ receta: item.receta, importe_total: item.importe_total }); familiaTop5Raw.set(fk, fa)
+      const ga = grupoTop5Raw.get(item.grupo) ?? []; ga.push({ receta: item.receta, importe_total: item.importe_total }); grupoTop5Raw.set(item.grupo, ga)
+    }
+    const familiaTop5Map = new Map(Array.from(familiaTop5Raw.entries()).map(([k, v]) => [k, v.sort((a, b) => b.importe_total - a.importe_total).slice(0, 5)]))
+    const grupoTop5Map   = new Map(Array.from(grupoTop5Raw.entries()).map(([k, v]) => [k, v.sort((a, b) => b.importe_total - a.importe_total).slice(0, 5)]))
+
     return {
       familias,
       maxFamilia:  familias[0]?.value ?? 1,
@@ -252,6 +263,8 @@ export default function SalesAnalysis() {
       top5Cocina,
       top5Bar,
       top5Vinos,
+      familiaTop5Map,
+      grupoTop5Map,
     }
   }, [data])
 
@@ -607,6 +620,7 @@ export default function SalesAnalysis() {
                 data={chartData.familias}
                 maxValue={chartData.maxFamilia}
                 showImporte={false}
+                tooltipData={chartData.familiaTop5Map}
               />
             </div>
             <div className="border-t pt-4">
@@ -615,6 +629,7 @@ export default function SalesAnalysis() {
                 data={chartData.grupoImporte}
                 maxValue={chartData.maxGrupo}
                 showImporte={true}
+                tooltipData={chartData.grupoTop5Map}
               />
             </div>
           </CardContent>
