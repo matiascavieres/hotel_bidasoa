@@ -204,6 +204,27 @@ export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
     )
   }
 
+  const renderTotalesCell = (row: ProductRow) => {
+    const totalQty = LOCATIONS.reduce((s, loc) => s + row.stock[loc].quantity_ml, 0)
+    const totalBottles = totalQty / row.format_ml
+    const price = row.sale_price ?? 0
+    const totalVenta = price > 0 && totalQty > 0 ? Math.round(price * totalBottles) : 0
+    const totalNeto  = price > 0 && totalQty > 0 ? Math.round((price / 1.19) * totalBottles) : 0
+    return (
+      <td className="px-2 py-2 text-center border-l">
+        <div className="flex flex-col items-center gap-0.5">
+          <span className="font-medium text-sm">{totalBottles.toFixed(1)}</span>
+          {isAdmin && totalVenta > 0 && (
+            <>
+              <span className="text-xs tabular-nums">{fmtCLP(totalVenta)}</span>
+              <span className="text-xs tabular-nums text-muted-foreground">{fmtCLP(totalNeto)} neto</span>
+            </>
+          )}
+        </div>
+      </td>
+    )
+  }
+
   const renderTableRow = (row: ProductRow, index: number) => (
     <tr key={row.id} className="border-b hover:bg-muted/30">
       <td className="px-2 py-2 text-center text-xs text-muted-foreground tabular-nums">
@@ -215,12 +236,18 @@ export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
           <p className="text-xs text-muted-foreground truncate">
             {row.code} • {row.format_ml}ml
           </p>
+          {isAdmin && row.sale_price && row.sale_price > 0 && (
+            <p className="text-xs text-muted-foreground tabular-nums">
+              {fmtCLP(row.sale_price)} • {fmtCLP(Math.round(row.sale_price / 1.19))} neto
+            </p>
+          )}
         </div>
       </td>
       <td className="px-2 py-2 whitespace-nowrap">
         <Badge variant="outline" className="text-xs">{row.category}</Badge>
       </td>
       {LOCATIONS.map(loc => renderStockCell(row, loc))}
+      {renderTotalesCell(row)}
     </tr>
   )
 
@@ -263,7 +290,8 @@ export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
           <colgroup>
             <col className="w-[4%]" />
             <col className="w-[25%]" />
-            <col className="w-[12%]" />
+            <col className="w-[10%]" />
+            <col />
             <col />
             <col />
             <col />
@@ -303,6 +331,9 @@ export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
                   </span>
                 </th>
               ))}
+              <th className="px-2 py-2 text-center text-sm font-medium border-l">
+                Totales
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -312,7 +343,7 @@ export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
                 <Fragment key={`group-${category}`}>
                   <tr className="bg-muted/30">
                     <td
-                      colSpan={3 + LOCATIONS.length}
+                      colSpan={4 + LOCATIONS.length}
                       className="px-2 py-1.5 text-sm font-semibold"
                     >
                       {category}
