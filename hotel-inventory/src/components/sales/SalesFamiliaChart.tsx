@@ -12,10 +12,11 @@ interface SalesFamiliaChartProps {
   data: SalesFamiliaChartItem[]
   maxValue: number
   showImporte?: boolean
+  showBoth?: boolean
   tooltipData?: Map<string, Top5Item[]>
 }
 
-export function SalesFamiliaChart({ data, maxValue, showImporte = false, tooltipData }: SalesFamiliaChartProps) {
+export function SalesFamiliaChart({ data, maxValue, showImporte = false, showBoth = false, tooltipData }: SalesFamiliaChartProps) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
 
   if (data.length === 0) {
@@ -52,7 +53,10 @@ export function SalesFamiliaChart({ data, maxValue, showImporte = false, tooltip
               {item.name}
             </span>
 
-            <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
+            <div
+              className="bg-muted rounded-full h-2 overflow-hidden"
+              style={showBoth ? { width: '100px', flexShrink: 0 } : { flex: 1 }}
+            >
               <div
                 className="h-full rounded-full transition-all duration-500"
                 style={{
@@ -62,15 +66,24 @@ export function SalesFamiliaChart({ data, maxValue, showImporte = false, tooltip
               />
             </div>
 
-            <div className="text-right shrink-0" style={{ minWidth: '88px' }}>
-              <span className="text-sm font-semibold tabular-nums">
-                {showImporte
-                  ? `$${item.importe.toLocaleString('es-CL')}`
-                  : item.value.toLocaleString('es-CL')}
-              </span>
-              <span className="text-xs text-muted-foreground ml-1">
-                {pct.toFixed(1)}%
-              </span>
+            <div className="text-right shrink-0" style={{ minWidth: showBoth ? '148px' : '88px' }}>
+              <div className="flex items-baseline justify-end gap-1">
+                <span className="text-sm font-semibold tabular-nums">
+                  {showImporte
+                    ? `$${item.importe.toLocaleString('es-CL')}`
+                    : showBoth
+                      ? `$${item.value.toLocaleString('es-CL')}`
+                      : item.value.toLocaleString('es-CL')}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {pct.toFixed(1)}%
+                </span>
+              </div>
+              {showBoth && item.importe > 0 && item.importe !== item.value && (
+                <p className="text-xs text-muted-foreground tabular-nums leading-tight">
+                  ${item.importe.toLocaleString('es-CL')} venta
+                </p>
+              )}
             </div>
 
             {isHovered && top5 && top5.length > 0 && (

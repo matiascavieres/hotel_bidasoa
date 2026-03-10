@@ -213,6 +213,7 @@ export default function SalesAnalysis() {
     for (const item of data) {
       grupoMap.set(item.grupo, (grupoMap.get(item.grupo) ?? 0) + item.importe_total)
     }
+    const totalGrupos = grupoMap.size
     const grupoImporte = Array.from(grupoMap.entries())
       .map(([name, imp]) => ({ name, value: Math.round(imp / 1.19), importe: imp }))
       .sort((a, b) => b.importe - a.importe)
@@ -256,6 +257,7 @@ export default function SalesAnalysis() {
       maxFamilia:  familias[0]?.value ?? 1,
       grupoImporte,
       maxGrupo:    grupoImporte[0]?.value ?? 1,
+      totalGrupos,
       top10,
       totalUnits,
       totalImporte,
@@ -582,11 +584,17 @@ export default function SalesAnalysis() {
               />
             </div>
             <div className="border-t pt-4">
-              <p className="text-base font-semibold mb-2">Top Grupos por Importe</p>
+              <p className="text-base font-semibold mb-2">
+                Top Grupos por Importe
+                <span className="text-xs text-muted-foreground font-normal ml-2">
+                  ({chartData.grupoImporte.length} de {chartData.totalGrupos})
+                </span>
+              </p>
               <SalesFamiliaChart
                 data={chartData.grupoImporte}
                 maxValue={chartData.maxGrupo}
                 showImporte={false}
+                showBoth={true}
                 tooltipData={chartData.grupoTop5Map}
               />
             </div>
