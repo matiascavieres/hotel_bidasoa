@@ -27,8 +27,8 @@ interface ProductRow {
 }
 
 export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
-  const { profile } = useAuth()
-  const isAdmin = profile?.role === 'admin'
+  const { profile, loading: authLoading } = useAuth()
+  const isAdmin = !authLoading && profile?.role === 'admin'
   const { data: allInventory, isLoading: invLoading } = useInventory(undefined)
   const { data: products, isLoading: prodLoading } = useProducts()
 

@@ -94,7 +94,7 @@ export function StockTable({
   searchQuery,
   initialStatus,
 }: StockTableProps) {
-  const { profile } = useAuth()
+  const { profile, loading: authLoading } = useAuth()
   const { data: inventory, isLoading: invLoading, error: invError } = useInventory(location)
   const { data: products, isLoading: prodLoading, error: prodError } = useProducts()
   const isLoading = invLoading || prodLoading
@@ -115,7 +115,7 @@ export function StockTable({
 
   const { data: inventoryMode } = useInventoryMode()
   const canEdit = canManageInventory(profile?.role ?? 'bartender', inventoryMode?.enabled, profile?.location, location)
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = !authLoading && profile?.role === 'admin'
 
   const handleViewMode = (mode: ViewMode) => {
     setViewMode(mode)
