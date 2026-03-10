@@ -460,55 +460,9 @@ export default function SalesAnalysis() {
               Exportar
             </Button>
 
-            {/* Clear filters */}
-            {hasFilters && (
-              <Button variant="outline" size="sm" onClick={() => {
-                setFamiliaPreset('all')
-                setSelectedGrupos([])
-                setSearchQuery('')
-              }}>
-                <X className="mr-1.5 h-3.5 w-3.5" />
-                Limpiar
-              </Button>
-            )}
           </div>
         </div>
 
-        {/* ── Second row: preset buttons + grupo multiselect ────────────────── */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Familia preset buttons */}
-          {(['all', 'cocina', 'bar', 'vinos'] as FamiliaPreset[]).map(preset => (
-            <Button
-              key={preset}
-              size="sm"
-              variant={familiaPreset === preset ? 'default' : 'outline'}
-              onClick={() => handleFamiliaPreset(preset)}
-              className="gap-1.5"
-            >
-              {FAMILIA_PRESET_ICONS[preset]}
-              {FAMILIA_PRESET_LABELS[preset]}
-            </Button>
-          ))}
-
-          {/* Separator */}
-          <div className="h-6 w-px bg-border mx-1" />
-
-          {/* Grupo multiselect */}
-          <MultiSelect
-            options={grupos || []}
-            selected={selectedGrupos}
-            onChange={setSelectedGrupos}
-            placeholder="Todos los grupos"
-            className="w-[220px]"
-          />
-
-          {/* Period label */}
-          <span className="text-xs text-muted-foreground ml-auto">
-            {fromMonth === toMonth
-              ? formatMonthLabel(fromMonth)
-              : `${formatMonthLabel(fromMonth)} – ${formatMonthLabel(toMonth)}`}
-          </span>
-        </div>
       </div>
 
       {/* ── B: KPI Block unificado ────────────────────────────────────────────── */}
@@ -528,7 +482,7 @@ export default function SalesAnalysis() {
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <p className="text-xl font-bold tabular-nums truncate">{fmtCLP(totals?.total ?? 0)}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Total acumulado</p>
+                <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">{fmtCLP(Math.round((totals?.total ?? 0) / 1.19))} neto</p>
                 {hoveredKPI === 'total' && chartData.top5Total.length > 0 && (
                   <KPITop5Tooltip items={chartData.top5Total} title="Top 5 global" />
                 )}
@@ -545,7 +499,7 @@ export default function SalesAnalysis() {
                   <UtensilsCrossed className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <p className="text-xl font-bold tabular-nums truncate">{fmtCLP(totals?.cocina ?? 0)}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Alimentación Sanz</p>
+                <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">{fmtCLP(Math.round((totals?.cocina ?? 0) / 1.19))} neto</p>
                 {hoveredKPI === 'cocina' && chartData.top5Cocina.length > 0 && (
                   <KPITop5Tooltip items={chartData.top5Cocina} title="Top 5 Cocina" />
                 )}
@@ -562,7 +516,7 @@ export default function SalesAnalysis() {
                   <Store className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <p className="text-xl font-bold tabular-nums truncate">{fmtCLP(totals?.bar ?? 0)}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Bebestibles Bar</p>
+                <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">{fmtCLP(Math.round((totals?.bar ?? 0) / 1.19))} neto</p>
                 {hoveredKPI === 'bar' && chartData.top5Bar.length > 0 && (
                   <KPITop5Tooltip items={chartData.top5Bar} title="Top 5 Bar" />
                 )}
@@ -579,7 +533,7 @@ export default function SalesAnalysis() {
                   <Wine className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <p className="text-xl font-bold tabular-nums truncate">{fmtCLP(totals?.vinos ?? 0)}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Bebestibles Sanz</p>
+                <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">{fmtCLP(Math.round((totals?.vinos ?? 0) / 1.19))} neto</p>
                 {hoveredKPI === 'vinos' && chartData.top5Vinos.length > 0 && (
                   <KPITop5Tooltip items={chartData.top5Vinos} title="Top 5 Vinos" />
                 )}
@@ -637,7 +591,50 @@ export default function SalesAnalysis() {
 
       </div>
 
-      {/* ── E: Tabla principal — todos los registros ─────────────────────────── */}
+      {/* ── E: Filtros de categoría — antes de la tabla ─────────────────────── */}
+      <div className="flex flex-wrap items-center gap-2">
+        {(['all', 'cocina', 'bar', 'vinos'] as FamiliaPreset[]).map(preset => (
+          <Button
+            key={preset}
+            size="sm"
+            variant={familiaPreset === preset ? 'default' : 'outline'}
+            onClick={() => handleFamiliaPreset(preset)}
+            className="gap-1.5"
+          >
+            {FAMILIA_PRESET_ICONS[preset]}
+            {FAMILIA_PRESET_LABELS[preset]}
+          </Button>
+        ))}
+
+        <div className="h-6 w-px bg-border mx-1" />
+
+        <MultiSelect
+          options={grupos || []}
+          selected={selectedGrupos}
+          onChange={setSelectedGrupos}
+          placeholder="Todos los grupos"
+          className="w-[220px]"
+        />
+
+        {hasFilters && (
+          <Button variant="outline" size="sm" onClick={() => {
+            setFamiliaPreset('all')
+            setSelectedGrupos([])
+            setSearchQuery('')
+          }}>
+            <X className="mr-1.5 h-3.5 w-3.5" />
+            Limpiar
+          </Button>
+        )}
+
+        <span className="text-xs text-muted-foreground ml-auto">
+          {fromMonth === toMonth
+            ? formatMonthLabel(fromMonth)
+            : `${formatMonthLabel(fromMonth)} – ${formatMonthLabel(toMonth)}`}
+        </span>
+      </div>
+
+      {/* ── F: Tabla principal — todos los registros ─────────────────────────── */}
       <Card>
         <CardHeader className="pb-2 pt-4 px-4">
           <div className="flex items-center justify-between">
