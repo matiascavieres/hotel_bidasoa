@@ -13,17 +13,18 @@ interface SalesFamiliaChartProps {
   maxValue: number
   showImporte?: boolean
   showBoth?: boolean
+  totalValue?: number
   tooltipData?: Map<string, Top5Item[]>
 }
 
-export function SalesFamiliaChart({ data, maxValue, showImporte = false, showBoth = false, tooltipData }: SalesFamiliaChartProps) {
+export function SalesFamiliaChart({ data, maxValue, showImporte = false, showBoth = false, totalValue, tooltipData }: SalesFamiliaChartProps) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
 
   if (data.length === 0) {
     return <p className="text-sm text-muted-foreground py-4 text-center">Sin datos</p>
   }
 
-  const total = data.reduce((s, d) => s + d.value, 0)
+  const total = totalValue ?? data.reduce((s, d) => s + d.value, 0)
   const safeMax = maxValue > 0 ? maxValue : 1
 
   return (
