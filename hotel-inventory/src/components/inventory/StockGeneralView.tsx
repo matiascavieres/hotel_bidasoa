@@ -1,8 +1,9 @@
 import { Fragment, useMemo, useState } from 'react'
-import { Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { Loader2, ArrowUpDown, ArrowUp, ArrowDown, Edit2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { StockIndicator } from './StockIndicator'
+import { EditQuantityModal } from './EditQuantityModal'
 import { useInventory, useProducts } from '@/hooks/useInventory'
 import { useAuth } from '@/context/AuthContext'
 import { LOCATION_NAMES, type LocationType } from '@/types'
@@ -35,6 +36,7 @@ export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
   const [sortField, setSortField] = useState<SortField>('category')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [editingCell, setEditingCell] = useState<{ row: ProductRow; location: LocationType } | null>(null)
 
   const isLoading = invLoading || prodLoading
 
@@ -187,7 +189,7 @@ export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
     const totalVenta = price > 0 && quantity_ml > 0 ? Math.round(price * bottles) : 0
     const totalNeto  = price > 0 && quantity_ml > 0 ? Math.round((price / 1.19) * bottles) : 0
     return (
-      <td key={location} className="px-2 py-2 text-center">
+      <td key={location} className="px-2 py-2 text-center group/cell">
         <div className="flex flex-col items-center gap-0.5">
           <span className="font-medium text-sm">
             {getBottles(quantity_ml, row.format_ml)}
@@ -198,6 +200,15 @@ export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
               <span className="text-xs tabular-nums">{fmtCLP(totalVenta)}</span>
               <span className="text-xs tabular-nums text-muted-foreground">{fmtCLP(totalNeto)} neto</span>
             </>
+          )}
+          {isAdmin && (
+            <button
+              className="opacity-0 group-hover/cell:opacity-100 transition-opacity mt-0.5 text-muted-foreground hover:text-foreground"
+              onClick={() => setEditingCell({ row, location })}
+              title={`Editar stock en ${LOCATION_NAMES[location]}`}
+            >
+              <Edit2 className="h-3 w-3" />
+            </button>
           )}
         </div>
       </td>
@@ -366,6 +377,24 @@ export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
         <div className="py-8 text-center text-muted-foreground">
           No se encontraron productos
         </div>
+      )}
+
+      {editingCell && (
+        <EditQuantityModal
+          product={{
+            id: editingCell.row.id,
+            code: editingCell.row.code,
+            name: editingCell.row.name,
+            category: editingCell.row.category,
+            format_ml: editingCell.row.format_ml,
+            quantity_ml: editingCell.row.stock[editingCell.location].quantity_ml,
+            min_stock_ml: editingCell.row.stock[editingCell.location].min_stock_ml,
+            sale_price: editingCell.row.sale_price,
+          }}
+          location={editingCell.location}
+          open={true}
+          onClose={() => setEditingCell(null)}
+        />
       )}
     </>
   )
