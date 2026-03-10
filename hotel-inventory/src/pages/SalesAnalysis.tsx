@@ -577,10 +577,10 @@ export default function SalesAnalysis() {
         </Card>
       </div>
 
-      {/* ── C: Gráficos — Donut + Familia ────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* ── C+D: Gráficos — Donut | Familia + Top Grupos ────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
-        <Card className="lg:col-span-2">
+        <Card>
           <CardHeader className="pb-2 pt-4 px-4">
             <CardTitle className="text-base font-semibold">
               Distribución por Grupo
@@ -596,36 +596,31 @@ export default function SalesAnalysis() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-1">
-          <CardHeader className="pb-2 pt-4 px-4">
-            <CardTitle className="text-base font-semibold">
-              Por Familia
-              <span className="text-muted-foreground font-normal text-xs ml-2">(unidades)</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <SalesFamiliaChart
-              data={chartData.familias}
-              maxValue={chartData.maxFamilia}
-              showImporte={false}
-            />
+        <Card>
+          <CardContent className="px-4 pt-4 pb-4 flex flex-col gap-4">
+            <div>
+              <p className="text-base font-semibold mb-2">
+                Por Familia
+                <span className="text-muted-foreground font-normal text-xs ml-2">(unidades)</span>
+              </p>
+              <SalesFamiliaChart
+                data={chartData.familias}
+                maxValue={chartData.maxFamilia}
+                showImporte={false}
+              />
+            </div>
+            <div className="border-t pt-4">
+              <p className="text-base font-semibold mb-2">Top Grupos por Importe</p>
+              <SalesFamiliaChart
+                data={chartData.grupoImporte}
+                maxValue={chartData.maxGrupo}
+                showImporte={true}
+              />
+            </div>
           </CardContent>
         </Card>
-      </div>
 
-      {/* ── D: Top Grupos por Importe (full-width) ───────────────────────────── */}
-      <Card>
-        <CardHeader className="pb-2 pt-4 px-4">
-          <CardTitle className="text-base font-semibold">Top Grupos por Importe</CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <SalesFamiliaChart
-            data={chartData.grupoImporte}
-            maxValue={chartData.maxGrupo}
-            showImporte={true}
-          />
-        </CardContent>
-      </Card>
+      </div>
 
       {/* ── E: Tabla principal — todos los registros ─────────────────────────── */}
       <Card>
