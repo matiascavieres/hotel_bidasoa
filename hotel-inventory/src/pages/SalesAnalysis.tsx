@@ -208,14 +208,14 @@ export default function SalesAnalysis() {
       .sort((a, b) => b.value - a.value)
       .slice(0, 8)
 
-    // By grupo for importe (right side ranking)
+    // By grupo for importe (right side ranking) — value=neto, importe=bruto
     const grupoMap = new Map<string, number>()
     for (const item of data) {
       grupoMap.set(item.grupo, (grupoMap.get(item.grupo) ?? 0) + item.importe_total)
     }
     const grupoImporte = Array.from(grupoMap.entries())
-      .map(([name, importe]) => ({ name, value: importe, importe }))
-      .sort((a, b) => b.value - a.value)
+      .map(([name, imp]) => ({ name, value: Math.round(imp / 1.19), importe: imp }))
+      .sort((a, b) => b.importe - a.importe)
       .slice(0, 8)
 
     // Top 10 by importe_total
@@ -225,6 +225,7 @@ export default function SalesAnalysis() {
 
     const totalUnits = data.reduce((s, i) => s + i.cantidad, 0)
     const totalImporte = data.reduce((s, i) => s + i.importe_total, 0)
+    const totalNeto = Math.round(totalImporte / 1.19)
 
     // Top 5 per KPI for hover tooltips
     const sortedByImporte = [...data].sort((a, b) => b.importe_total - a.importe_total)
@@ -258,6 +259,7 @@ export default function SalesAnalysis() {
       top10,
       totalUnits,
       totalImporte,
+      totalNeto,
       grupoTotals,
       top5Total,
       top5Cocina,
@@ -558,7 +560,9 @@ export default function SalesAnalysis() {
               data={toChartSalesData(data)}
               periodo="total"
               onSliceClick={toggleGrupo}
-              centerLabel={chartData.totalUnits}
+              centerLabel={chartData.totalNeto}
+              centerSubLabel="total neto"
+              useImporte={true}
             />
           </CardContent>
         </Card>
@@ -582,7 +586,7 @@ export default function SalesAnalysis() {
               <SalesFamiliaChart
                 data={chartData.grupoImporte}
                 maxValue={chartData.maxGrupo}
-                showImporte={true}
+                showImporte={false}
                 tooltipData={chartData.grupoTop5Map}
               />
             </div>

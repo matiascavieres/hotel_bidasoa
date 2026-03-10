@@ -7,6 +7,8 @@ interface SalesPieChartProps {
   periodo: 'total' | '2024' | '2025'
   onSliceClick?: (grupo: string) => void
   centerLabel?: string | number
+  centerSubLabel?: string
+  useImporte?: boolean
 }
 
 const COLORS = [
@@ -17,26 +19,33 @@ const COLORS = [
 
 interface ChartEntry {
   name: string
-  value: number
+  value: number   // used for pie sizing (neto when useImporte)
+  bruto: number   // original importe_total
   percent: number
 }
 
-export function SalesPieChart({ data, periodo, onSliceClick, centerLabel }: SalesPieChartProps) {
+export function SalesPieChart({ data, periodo, onSliceClick, centerLabel, centerSubLabel = 'uds. totales', useImporte = false }: SalesPieChartProps) {
   const chartData = useMemo(() => {
-    const grupoMap = new Map<string, number>()
+    const grupoMap = new Map<string, { value: number; bruto: number }>()
 
     for (const item of data) {
-      let cantidad: number
-      switch (periodo) {
-        case '2024': cantidad = item.cantidad_2024; break
-        case '2025': cantidad = item.cantidad_2025; break
-        default: cantidad = item.total
+      const prev = grupoMap.get(item.grupo) ?? { value: 0, bruto: 0 }
+      if (useImporte) {
+        const imp = item.importe_total
+        grupoMap.set(item.grupo, { value: prev.value + Math.round(imp / 1.19), bruto: prev.bruto + imp })
+      } else {
+        let cantidad: number
+        switch (periodo) {
+          case '2024': cantidad = item.cantidad_2024; break
+          case '2025': cantidad = item.cantidad_2025; break
+          default: cantidad = item.total
+        }
+        grupoMap.set(item.grupo, { value: prev.value + cantidad, bruto: prev.bruto + cantidad })
       }
-      grupoMap.set(item.grupo, (grupoMap.get(item.grupo) || 0) + cantidad)
     }
 
     const entries = Array.from(grupoMap.entries())
-      .map(([name, value]) => ({ name, value }))
+      .map(([name, v]) => ({ name, value: v.value, bruto: v.bruto }))
       .sort((a, b) => b.value - a.value)
 
     const totalValue = entries.reduce((s, e) => s + e.value, 0)
@@ -44,10 +53,12 @@ export function SalesPieChart({ data, periodo, onSliceClick, centerLabel }: Sale
     let result: ChartEntry[]
     if (entries.length > 10) {
       const top = entries.slice(0, 9)
-      const otrosValue = entries.slice(9).reduce((s, e) => s + e.value, 0)
+      const otros = entries.slice(9)
+      const otrosValue = otros.reduce((s, e) => s + e.value, 0)
+      const otrosBruto = otros.reduce((s, e) => s + e.bruto, 0)
       result = [
         ...top.map(e => ({ ...e, percent: totalValue > 0 ? (e.value / totalValue) * 100 : 0 })),
-        { name: 'Otros', value: otrosValue, percent: totalValue > 0 ? (otrosValue / totalValue) * 100 : 0 },
+        { name: 'Otros', value: otrosValue, bruto: otrosBruto, percent: totalValue > 0 ? (otrosValue / totalValue) * 100 : 0 },
       ]
     } else {
       result = entries.map(e => ({
@@ -57,7 +68,7 @@ export function SalesPieChart({ data, periodo, onSliceClick, centerLabel }: Sale
     }
 
     return result
-  }, [data, periodo])
+  }, [data, periodo, useImporte])
 
   if (chartData.length === 0) return null
 
@@ -67,7 +78,14 @@ export function SalesPieChart({ data, periodo, onSliceClick, centerLabel }: Sale
     return (
       <div className="rounded-md border bg-background p-2 shadow-sm text-sm">
         <p className="font-medium">{entry.name}</p>
-        <p className="text-muted-foreground">{entry.value.toLocaleString('es-CL')} uds.</p>
+        {useImporte ? (
+          <>
+            <p className="text-muted-foreground">${entry.value.toLocaleString('es-CL')} neto</p>
+            <p className="text-muted-foreground">${entry.bruto.toLocaleString('es-CL')} venta</p>
+          </>
+        ) : (
+          <p className="text-muted-foreground">{entry.value.toLocaleString('es-CL')} uds.</p>
+        )}
         <p className="text-muted-foreground">{entry.percent.toFixed(1)}%</p>
       </div>
     )
@@ -79,7 +97,6 @@ export function SalesPieChart({ data, periodo, onSliceClick, centerLabel }: Sale
 
   return (
     <div className="w-full flex flex-col gap-4">
-      {/* Donut chart con overlay de total en el centro */}
       <div className="relative w-full" style={{ height: 320 }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -109,13 +126,12 @@ export function SalesPieChart({ data, periodo, onSliceClick, centerLabel }: Sale
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="text-center">
               <p className="text-2xl font-bold tabular-nums">{displayLabel}</p>
-              <p className="text-xs text-muted-foreground">uds. totales</p>
+              <p className="text-xs text-muted-foreground">{centerSubLabel}</p>
             </div>
           </div>
         )}
       </div>
 
-      {/* Leyenda personalizada — ordenada de mayor a menor (mismo orden que chartData) */}
       <div className="flex flex-wrap gap-x-4 gap-y-2 px-1">
         {chartData.map((entry, index) => (
           <button

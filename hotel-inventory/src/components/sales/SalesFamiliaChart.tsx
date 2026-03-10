@@ -75,9 +75,14 @@ export function SalesFamiliaChart({ data, maxValue, showImporte = false, tooltip
 
             {isHovered && top5 && top5.length > 0 && (
               <div className="absolute left-0 top-full mt-1 z-50 w-72 rounded-md border bg-popover text-popover-foreground shadow-md p-3">
-                <p className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wide">
+                <p className="text-xs font-semibold mb-1 text-muted-foreground uppercase tracking-wide">
                   Top 5 — {item.name}
                 </p>
+                {item.importe > 0 && item.importe !== item.value && (
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Total venta: <span className="font-semibold text-foreground">${item.importe.toLocaleString('es-CL')}</span>
+                  </p>
+                )}
                 <div className="space-y-1.5">
                   {top5.map((t, i) => {
                     const neto = Math.round(t.importe_total / 1.19)
