@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { StockIndicator } from './StockIndicator'
 import { useInventory, useProducts } from '@/hooks/useInventory'
+import { useAuth } from '@/context/AuthContext'
 import { LOCATION_NAMES, type LocationType } from '@/types'
 
 interface StockGeneralViewProps {
@@ -26,6 +27,8 @@ interface ProductRow {
 }
 
 export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
+  const { profile } = useAuth()
+  const isAdmin = profile?.role === 'admin'
   const { data: allInventory, isLoading: invLoading } = useInventory(undefined)
   const { data: products, isLoading: prodLoading } = useProducts()
 
@@ -179,6 +182,10 @@ export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
 
   const renderStockCell = (row: ProductRow, location: LocationType) => {
     const { quantity_ml, min_stock_ml } = row.stock[location]
+    const price = row.sale_price ?? 0
+    const bottles = quantity_ml / row.format_ml
+    const totalVenta = price > 0 && quantity_ml > 0 ? Math.round(price * bottles) : 0
+    const totalNeto  = price > 0 && quantity_ml > 0 ? Math.round((price / 1.19) * bottles) : 0
     return (
       <td key={location} className="px-2 py-2 text-center">
         <div className="flex flex-col items-center gap-0.5">
@@ -186,6 +193,12 @@ export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
             {getBottles(quantity_ml, row.format_ml)}
           </span>
           <StockIndicator current={quantity_ml} minimum={min_stock_ml} />
+          {isAdmin && totalVenta > 0 && (
+            <>
+              <span className="text-xs tabular-nums">{fmtCLP(totalVenta)}</span>
+              <span className="text-xs tabular-nums text-muted-foreground">{fmtCLP(totalNeto)} neto</span>
+            </>
+          )}
         </div>
       </td>
     )
@@ -226,21 +239,23 @@ export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
         />
       </div>
 
-      {/* Stock value summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-        {([
-          { key: 'bar_casa_sanz',     label: 'Casa Sanz' },
-          { key: 'bar_hotel_bidasoa', label: 'Bidasoa'   },
-          { key: 'bodega',            label: 'Bodega'    },
-          { key: 'total',             label: 'Total'     },
-        ] as const).map(({ key, label }) => (
-          <div key={key} className="rounded-md border bg-muted/30 p-3">
-            <p className="text-xs font-semibold text-muted-foreground mb-1">{label}</p>
-            <p className="text-sm font-bold tabular-nums">{fmtCLP(stockValueTotals[key].venta)}</p>
-            <p className="text-xs text-muted-foreground tabular-nums">{fmtCLP(stockValueTotals[key].neto)} neto</p>
-          </div>
-        ))}
-      </div>
+      {/* Stock value summary cards — admin only */}
+      {isAdmin && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+          {([
+            { key: 'bar_casa_sanz',     label: 'Casa Sanz' },
+            { key: 'bar_hotel_bidasoa', label: 'Bidasoa'   },
+            { key: 'bodega',            label: 'Bodega'    },
+            { key: 'total',             label: 'Total'     },
+          ] as const).map(({ key, label }) => (
+            <div key={key} className="rounded-md border bg-muted/30 p-3">
+              <p className="text-xs font-semibold text-muted-foreground mb-1">{label}</p>
+              <p className="text-sm font-bold tabular-nums">{fmtCLP(stockValueTotals[key].venta)}</p>
+              <p className="text-xs text-muted-foreground tabular-nums">{fmtCLP(stockValueTotals[key].neto)} neto</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Table */}
       <div className="rounded-md border overflow-auto max-h-[calc(100vh-280px)]">

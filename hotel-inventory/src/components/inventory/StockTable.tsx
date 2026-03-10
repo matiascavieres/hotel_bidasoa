@@ -115,6 +115,7 @@ export function StockTable({
 
   const { data: inventoryMode } = useInventoryMode()
   const canEdit = canManageInventory(profile?.role ?? 'bartender', inventoryMode?.enabled, profile?.location, location)
+  const isAdmin = profile?.role === 'admin'
 
   const handleViewMode = (mode: ViewMode) => {
     setViewMode(mode)
@@ -282,14 +283,16 @@ export function StockTable({
             <div className="rounded-md border overflow-auto max-h-[calc(100vh-320px)]">
               <table className="w-full table-fixed">
                 <colgroup>
-                  <col className="w-[28%]" />
-                  <col className="w-[12%]" />
-                  <col className="w-[10%]" />
-                  <col className="w-[10%]" />
-                  <col className="w-[10%]" />
-                  <col className="w-[10%]" />
-                  <col className="w-[10%]" />
-                  <col className="w-[10%]" />
+                  <col className={isAdmin ? 'w-[28%]' : 'w-[45%]'} />
+                  <col className={isAdmin ? 'w-[12%]' : 'w-[20%]'} />
+                  <col className={isAdmin ? 'w-[10%]' : 'w-[18%]'} />
+                  <col className={isAdmin ? 'w-[10%]' : 'w-[17%]'} />
+                  {isAdmin && <>
+                    <col className="w-[10%]" />
+                    <col className="w-[10%]" />
+                    <col className="w-[10%]" />
+                    <col className="w-[10%]" />
+                  </>}
                 </colgroup>
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b bg-muted">
@@ -329,10 +332,12 @@ export function StockTable({
                         <SortIcon field="status" />
                       </span>
                     </th>
-                    <th className="px-2 py-2 text-right text-sm font-medium whitespace-nowrap">Precio Venta</th>
-                    <th className="px-2 py-2 text-right text-sm font-medium whitespace-nowrap">Neto Unit.</th>
-                    <th className="px-2 py-2 text-right text-sm font-medium whitespace-nowrap">Total Venta</th>
-                    <th className="px-2 py-2 text-right text-sm font-medium whitespace-nowrap">Total Neto</th>
+                    {isAdmin && <>
+                      <th className="px-2 py-2 text-right text-sm font-medium whitespace-nowrap">Precio Venta</th>
+                      <th className="px-2 py-2 text-right text-sm font-medium whitespace-nowrap">Neto Unit.</th>
+                      <th className="px-2 py-2 text-right text-sm font-medium whitespace-nowrap">Total Venta</th>
+                      <th className="px-2 py-2 text-right text-sm font-medium whitespace-nowrap">Total Neto</th>
+                    </>}
                   </tr>
                 </thead>
                 <tbody>
@@ -375,44 +380,48 @@ export function StockTable({
                             minimum={product.min_stock_ml}
                           />
                         </td>
-                        <td className="px-2 py-2 text-right text-sm tabular-nums text-muted-foreground">
-                          {fmtCLP(price)}
-                        </td>
-                        <td className="px-2 py-2 text-right text-sm tabular-nums text-muted-foreground">
-                          {fmtCLP(netoUnit)}
-                        </td>
-                        <td className="px-2 py-2 text-right text-sm tabular-nums">
-                          {fmtCLP(totalVenta)}
-                        </td>
-                        <td className="px-2 py-2 text-right text-sm tabular-nums font-semibold">
-                          {fmtCLP(totalNeto)}
-                        </td>
+                        {isAdmin && <>
+                          <td className="px-2 py-2 text-right text-sm tabular-nums text-muted-foreground">
+                            {fmtCLP(price)}
+                          </td>
+                          <td className="px-2 py-2 text-right text-sm tabular-nums text-muted-foreground">
+                            {fmtCLP(netoUnit)}
+                          </td>
+                          <td className="px-2 py-2 text-right text-sm tabular-nums">
+                            {fmtCLP(totalVenta)}
+                          </td>
+                          <td className="px-2 py-2 text-right text-sm tabular-nums font-semibold">
+                            {fmtCLP(totalNeto)}
+                          </td>
+                        </>}
                       </tr>
                     )
                   })}
                 </tbody>
-                <tfoot className="border-t bg-muted/50">
-                  <tr>
-                    {(() => {
-                      const fmtCLP = (n: number) => n > 0 ? `$${n.toLocaleString('es-CL')}` : '—'
-                      const totalVenta = sortedProducts.reduce((s, p) => {
-                        const price = p.sale_price ?? 0
-                        return s + (price > 0 ? Math.round(price * p.quantity_ml / p.format_ml) : 0)
-                      }, 0)
-                      const totalNeto = sortedProducts.reduce((s, p) => {
-                        const price = p.sale_price ?? 0
-                        return s + (price > 0 ? Math.round((price / 1.19) * p.quantity_ml / p.format_ml) : 0)
-                      }, 0)
-                      return (
-                        <>
-                          <td colSpan={6} className="px-2 py-2 text-right text-sm font-semibold">Totales</td>
-                          <td className="px-2 py-2 text-right text-sm tabular-nums font-bold">{fmtCLP(totalVenta)}</td>
-                          <td className="px-2 py-2 text-right text-sm tabular-nums font-bold">{fmtCLP(totalNeto)}</td>
-                        </>
-                      )
-                    })()}
-                  </tr>
-                </tfoot>
+                {isAdmin && (
+                  <tfoot className="border-t bg-muted/50">
+                    <tr>
+                      {(() => {
+                        const fmtCLP = (n: number) => n > 0 ? `$${n.toLocaleString('es-CL')}` : '—'
+                        const totalVenta = sortedProducts.reduce((s, p) => {
+                          const price = p.sale_price ?? 0
+                          return s + (price > 0 ? Math.round(price * p.quantity_ml / p.format_ml) : 0)
+                        }, 0)
+                        const totalNeto = sortedProducts.reduce((s, p) => {
+                          const price = p.sale_price ?? 0
+                          return s + (price > 0 ? Math.round((price / 1.19) * p.quantity_ml / p.format_ml) : 0)
+                        }, 0)
+                        return (
+                          <>
+                            <td colSpan={6} className="px-2 py-2 text-right text-sm font-semibold">Totales</td>
+                            <td className="px-2 py-2 text-right text-sm tabular-nums font-bold">{fmtCLP(totalVenta)}</td>
+                            <td className="px-2 py-2 text-right text-sm tabular-nums font-bold">{fmtCLP(totalNeto)}</td>
+                          </>
+                        )
+                      })()}
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
           </div>
