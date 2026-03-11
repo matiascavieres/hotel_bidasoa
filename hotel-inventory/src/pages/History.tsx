@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select'
 import { LogTimeline } from '@/components/logs/LogTimeline'
 import { LogTable } from '@/components/logs/LogTable'
-import { useLogs, exportLogsToCSV, exportApprovedItemsSummary } from '@/hooks/useLogs'
+import { useLogs, fetchLogsForExport, exportLogsToCSV, exportApprovedItemsSummary } from '@/hooks/useLogs'
 import { useProducts } from '@/hooks/useInventory'
 import { useToast } from '@/hooks/use-toast'
 
@@ -54,21 +54,27 @@ export default function History() {
     localStorage.setItem('history-view-mode', mode)
   }
 
-  const handleExport = () => {
-    if (!logs || logs.length === 0) {
-      toast({
-        title: 'Sin datos',
-        description: 'No hay registros para exportar con los filtros actuales.',
-        variant: 'destructive',
-      })
-      return
-    }
-
+  const handleExport = async () => {
     try {
-      const formattedLogs = logs.map(log => ({
+      const allLogs = await fetchLogsForExport({
+        action: actionFilter,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      })
+
+      if (allLogs.length === 0) {
+        toast({
+          title: 'Sin datos',
+          description: 'No hay registros para exportar con los filtros actuales.',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      const formattedLogs = allLogs.map(log => ({
         created_at: log.created_at,
         action: log.action,
-        user: log.user as { full_name: string } | undefined,
+        user: undefined as { full_name: string } | undefined,
         entity_type: log.entity_type,
         entity_id: log.entity_id,
         location: log.location ?? undefined,
@@ -79,7 +85,7 @@ export default function History() {
 
       toast({
         title: 'Exportado',
-        description: `Se exportaron ${logs.length} registros a CSV.`,
+        description: `Se exportaron ${allLogs.length} registros a CSV.`,
       })
     } catch (error) {
       console.error('[History] Export error:', error)
@@ -91,25 +97,36 @@ export default function History() {
     }
   }
 
-  const handleExportResumen = () => {
-    if (!logs || logs.length === 0) {
-      toast({ title: 'Sin datos', description: 'No hay registros para exportar.', variant: 'destructive' })
-      return
-    }
-    const formattedLogs = logs.map(log => ({
-      action: log.action,
-      created_at: log.created_at,
-      details: (log.details || {}) as Record<string, unknown>,
-    }))
-    const productsData = (products || []).map(p => ({
-      name: p.name,
-      sale_price: (p as { sale_price?: number | null }).sale_price ?? null,
-    }))
-    const exported = exportApprovedItemsSummary(formattedLogs, productsData)
-    if (exported) {
-      toast({ title: 'Exportado', description: 'Resumen de movimientos aprobados exportado.' })
-    } else {
-      toast({ title: 'Sin datos', description: 'No hay movimientos aprobados en el período seleccionado.', variant: 'destructive' })
+  const handleExportResumen = async () => {
+    try {
+      const allLogs = await fetchLogsForExport({
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      })
+
+      if (allLogs.length === 0) {
+        toast({ title: 'Sin datos', description: 'No hay registros para exportar.', variant: 'destructive' })
+        return
+      }
+
+      const formattedLogs = allLogs.map(log => ({
+        action: log.action,
+        created_at: log.created_at,
+        details: (log.details || {}) as Record<string, unknown>,
+      }))
+      const productsData = (products || []).map(p => ({
+        name: p.name,
+        sale_price: (p as { sale_price?: number | null }).sale_price ?? null,
+      }))
+      const exported = exportApprovedItemsSummary(formattedLogs, productsData)
+      if (exported) {
+        toast({ title: 'Exportado', description: 'Resumen de movimientos aprobados exportado.' })
+      } else {
+        toast({ title: 'Sin datos', description: 'No hay movimientos aprobados en el período seleccionado.', variant: 'destructive' })
+      }
+    } catch (error) {
+      console.error('[History] Export resumen error:', error)
+      toast({ title: 'Error', description: 'No se pudo exportar el resumen.', variant: 'destructive' })
     }
   }
 

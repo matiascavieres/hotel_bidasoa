@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from 'react'
-import { Plus, Edit2, Upload, Search, Loader2, LayoutList, LayoutGrid, ScanBarcode, FileText, CheckCircle2, AlertTriangle, Check } from 'lucide-react'
+import { Plus, Edit2, Upload, Search, Loader2, LayoutList, LayoutGrid, ScanBarcode, FileText, CheckCircle2, AlertTriangle, Check, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
-import { useProducts, useCategories, useCreateProduct, useUpdateProduct, useCreateCategory } from '@/hooks/useInventory'
+import { useProducts, useCategories, useCreateProduct, useUpdateProduct, useCreateCategory, useApplySalesPrices } from '@/hooks/useInventory'
 import { useCreateLog } from '@/hooks/useLogs'
 import { useAuth } from '@/context/AuthContext'
 import { BarcodeScanner } from '@/components/ui/barcode-scanner'
@@ -31,6 +31,7 @@ import { CatalogStockCoverage } from '@/components/inventory/CatalogStockCoverag
 import { supabase } from '@/lib/supabase'
 import { useQueryClient } from '@tanstack/react-query'
 import { parseWineCSV, type WineImportResult } from '@/utils/importWines'
+import { normalizeRecetaName } from '@/lib/salesUtils'
 
 interface Product {
   id: string
@@ -72,6 +73,11 @@ export default function AdminCatalog() {
   const createProduct = useCreateProduct()
   const updateProduct = useUpdateProduct()
   const createCategoryMutation = useCreateCategory()
+
+  // Cross-reference prices state
+  const [isCrossRefOpen, setIsCrossRefOpen] = useState(false)
+  const [crossRefRunning, setCrossRefRunning] = useState(false)
+  const applySalesPrices = useApplySalesPrices()
 
   // Import state
   const importFileRef = useRef<HTMLInputElement>(null)
@@ -241,6 +247,70 @@ export default function AdminCatalog() {
     }
   }
 
+  const handleCrossRefPrices = async () => {
+    setCrossRefRunning(true)
+    try {
+      // Fetch sales data
+      const { data: salesData, error: salesError } = await supabase
+        .from('sales_data')
+        .select('receta, importe_unitario, importe_total')
+      if (salesError) throw salesError
+
+      // Build normalized sales map: normalizedName → best importe_unitario (by highest importe_total)
+      const salesMap = new Map<string, number>()
+      const salesTotalMap = new Map<string, number>()
+      for (const row of (salesData || [])) {
+        if (!row.importe_unitario || row.importe_unitario <= 0) continue
+        const key = normalizeRecetaName(row.receta).toLowerCase()
+        const existing = salesTotalMap.get(key) ?? 0
+        if ((row.importe_total ?? 0) > existing) {
+          salesMap.set(key, row.importe_unitario)
+          salesTotalMap.set(key, row.importe_total ?? 0)
+        }
+      }
+
+      // Find products without sale_price
+      const unpriced = (products || []).filter(p => {
+        const price = (p as Product).sale_price
+        return !price || price <= 0
+      }) as Product[]
+
+      // Match and build updates
+      const updates: Array<{ productId: string; salePrice: number }> = []
+      let noMatch = 0
+      for (const product of unpriced) {
+        const key = normalizeRecetaName(product.name).toLowerCase()
+        const price = salesMap.get(key)
+        if (price && price > 0) {
+          updates.push({ productId: product.id, salePrice: price })
+        } else {
+          noMatch++
+        }
+      }
+
+      if (updates.length === 0) {
+        toast({
+          title: 'Sin matches',
+          description: `No se encontraron coincidencias entre los ${unpriced.length} productos sin precio y el informe de ventas.`,
+        })
+        setIsCrossRefOpen(false)
+        return
+      }
+
+      const updated = await applySalesPrices.mutateAsync(updates)
+      toast({
+        title: 'Precios actualizados',
+        description: `${updated} productos actualizados con precio de ventas. ${noMatch} sin coincidencia.`,
+      })
+      setIsCrossRefOpen(false)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al cruzar precios'
+      toast({ title: 'Error', description: msg, variant: 'destructive' })
+    } finally {
+      setCrossRefRunning(false)
+    }
+  }
+
   const handleImportFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !categories) return
@@ -398,6 +468,10 @@ export default function AdminCatalog() {
               Importar CSV
             </Button>
           )}
+          <Button variant="outline" onClick={() => setIsCrossRefOpen(true)}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Cruzar precios
+          </Button>
           <Button onClick={() => handleOpenProductModal()}>
             <Plus className="mr-2 h-4 w-4" />
             Nuevo Producto
@@ -857,6 +931,37 @@ export default function AdminCatalog() {
         onClose={() => setIsScannerOpen(false)}
         onScan={(code) => setFormData(prev => ({ ...prev, code }))}
       />
+
+      {/* Cross-reference prices dialog */}
+      <Dialog open={isCrossRefOpen} onOpenChange={setIsCrossRefOpen}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Cruzar precios desde ventas</DialogTitle>
+            <DialogDescription>
+              Se buscarán productos sin precio de venta y se les asignará el importe unitario del informe de ventas si se encuentra una coincidencia por nombre.
+              Los productos que no tengan coincidencia no serán modificados.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCrossRefOpen(false)} disabled={crossRefRunning}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCrossRefPrices} disabled={crossRefRunning}>
+              {crossRefRunning ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Procesando...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Actualizar precios
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
