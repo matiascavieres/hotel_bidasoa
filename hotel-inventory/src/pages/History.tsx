@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select'
 import { LogTimeline } from '@/components/logs/LogTimeline'
 import { LogTable } from '@/components/logs/LogTable'
-import { useLogs, fetchLogsForExport, exportLogsToCSV, exportApprovedItemsSummary } from '@/hooks/useLogs'
+import { fetchLogsForExport, exportLogsToCSV, exportApprovedItemsSummary } from '@/hooks/useLogs'
 import { useProducts } from '@/hooks/useInventory'
 import { useToast } from '@/hooks/use-toast'
 
@@ -38,13 +38,6 @@ export default function History() {
   const [showFilters, setShowFilters] = useState(false)
   const [viewMode, setViewMode] = useState<HistoryViewMode>(() => {
     return (localStorage.getItem('history-view-mode') as HistoryViewMode) || 'table'
-  })
-
-  // Fetch logs with same filters used by LogTimeline
-  const { data: logs } = useLogs({
-    action: actionFilter,
-    dateFrom: dateFrom || undefined,
-    dateTo: dateTo || undefined,
   })
 
   const { data: products } = useProducts()
