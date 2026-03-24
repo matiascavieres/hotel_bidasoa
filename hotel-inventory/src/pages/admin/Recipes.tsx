@@ -311,6 +311,7 @@ export default function Recipes() {
   const [formDescription, setFormDescription] = useState('')
   const [formPortions, setFormPortions] = useState(1)
   const [formGrupo, setFormGrupo] = useState('')
+  const [formComments, setFormComments] = useState('')
   const [formIngredients, setFormIngredients] = useState<RecipeFormIngredient[]>([
     { product_id: '', quantity_ml: 0, unit: 'ml', price_per_kg: null },
   ])
@@ -354,6 +355,7 @@ export default function Recipes() {
     setFormDescription('')
     setFormPortions(1)
     setFormGrupo('')
+    setFormComments('')
     setFormIngredients([{ product_id: '', quantity_ml: 0, unit: 'ml', price_per_kg: null }])
     setFormExistingImages([])
     setFormNewImageFiles([])
@@ -367,6 +369,7 @@ export default function Recipes() {
     setFormDescription(recipe.description || '')
     setFormPortions(recipe.portions ?? 1)
     setFormGrupo(recipe.grupo || '')
+    setFormComments(recipe.comments || '')
     setFormIngredients(
       recipe.ingredients?.length
         ? recipe.ingredients.map((i) => ({
@@ -455,6 +458,7 @@ export default function Recipes() {
           description: formDescription.trim() || null,
           portions: formPortions,
           grupo: formGrupo.trim() || null,
+          comments: formComments.trim() || null,
           ingredients: validIngredients.map((i) => ({
             product_id: i.product_id,
             quantity_ml: i.quantity_ml,
@@ -471,6 +475,7 @@ export default function Recipes() {
           description: formDescription.trim() || undefined,
           portions: formPortions,
           grupo: formGrupo.trim() || undefined,
+          comments: formComments.trim() || undefined,
           ingredients: validIngredients.map((i) => ({
             product_id: i.product_id,
             quantity_ml: i.quantity_ml,
@@ -645,6 +650,21 @@ export default function Recipes() {
                   onChange={(e) => setFormPortions(parseInt(e.target.value) || 1)}
                 />
               </div>
+            </div>
+
+            {/* Comentarios */}
+            <div className="space-y-1">
+              <Label className="flex items-center gap-1">
+                <BookOpen className="h-3.5 w-3.5" />
+                Comentarios / Notas de preparación
+              </Label>
+              <textarea
+                className="flex min-h-[72px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                placeholder="Ej: Preparar la salsa con anticipación, servir frío, etc."
+                value={formComments}
+                onChange={(e) => setFormComments(e.target.value)}
+                rows={3}
+              />
             </div>
 
             <Separator />
@@ -1263,17 +1283,21 @@ function RecipeRow({ recipe, expanded, onToggle, onEdit, onDelete, importeVenta 
                           </div>
                           <div>
                             <span className="font-medium text-foreground">% Costo / Venta</span>
-                            <p>(Costo por porción ÷ Imp. Neto) × 100 → qué porcentaje del precio neto representa el costo de ingredientes. Ideal: bajo 30-35%.</p>
+                            <p>(Costo por porción ÷ Imp. Neto) × 100 → qué porcentaje del precio neto representa el costo de ingredientes. Ideal: ≤30% 🟢, 31-40% 🟡, &gt;40% 🔴.</p>
+                          </div>
+                          <div>
+                            <span className="font-medium text-foreground">% Utilidad</span>
+                            <p>100 − % Costo/Venta → porcentaje del precio neto que queda como margen bruto. Ideal: ≥70% 🟢, 60-69% 🟡, &lt;60% 🔴.</p>
                           </div>
                           <div>
                             <span className="font-medium text-foreground">Margen neto</span>
-                            <p>Imp. Neto − Costo por porción → utilidad bruta por porción vendida (sin contar mano de obra ni costos fijos).</p>
+                            <p>Imp. Neto − Costo por porción → pesos de utilidad bruta por porción vendida (sin mano de obra ni costos fijos).</p>
                           </div>
                         </div>
                       </PopoverContent>
                     </Popover>
                   </div>
-                  <div className={`grid gap-3 ${importeVenta ? 'grid-cols-5' : 'grid-cols-3'}`}>
+                  <div className={`grid gap-3 ${importeVenta ? 'grid-cols-6' : 'grid-cols-3'}`}>
                     <div className="text-center">
                       <p className="text-xs text-muted-foreground">Porciones</p>
                       <p className="text-sm font-semibold">{portions}</p>
@@ -1290,44 +1314,67 @@ function RecipeRow({ recipe, expanded, onToggle, onEdit, onDelete, importeVenta 
                         {hasCosts ? `$${formatNumber(valuePerPortion)}` : '—'}
                       </p>
                     </div>
-                    {importeVenta && (
-                      <>
-                        <div className="text-center border-l border-border/40">
-                          <p className="text-xs text-muted-foreground">Imp. Venta</p>
-                          <p className="text-sm font-semibold text-blue-700">${formatNumber(importeVenta)}</p>
-                          {importeNeto && (
-                            <>
-                              <p className="text-xs text-muted-foreground mt-1">Imp. Neto</p>
-                              <p className="text-sm font-semibold text-violet-700">${formatNumber(importeNeto)}</p>
-                            </>
-                          )}
-                        </div>
-                        <div className="text-center border-l border-border/40">
-                          <p className="text-xs text-muted-foreground">% Costo/Venta</p>
-                          <p className={`text-sm font-semibold ${
-                            hasCosts && importeNeto
-                              ? Math.round((valuePerPortion / importeNeto) * 100) <= 30
-                                ? 'text-emerald-700'
-                                : Math.round((valuePerPortion / importeNeto) * 100) <= 40
-                                  ? 'text-amber-600'
+                    {importeVenta && (() => {
+                      const pctCosto = hasCosts && importeNeto
+                        ? Math.round((valuePerPortion / importeNeto) * 100)
+                        : null
+                      const pctUtilidad = pctCosto !== null ? 100 - pctCosto : null
+                      const margen = hasCosts && importeNeto ? importeNeto - valuePerPortion : null
+                      return (
+                        <>
+                          <div className="text-center border-l border-border/40">
+                            <p className="text-xs text-muted-foreground">Imp. Venta</p>
+                            <p className="text-sm font-semibold text-blue-700">${formatNumber(importeVenta)}</p>
+                            {importeNeto && (
+                              <>
+                                <p className="text-xs text-muted-foreground mt-1">Imp. Neto</p>
+                                <p className="text-sm font-semibold text-violet-700">${formatNumber(importeNeto)}</p>
+                              </>
+                            )}
+                          </div>
+                          <div className="text-center border-l border-border/40">
+                            <p className="text-xs text-muted-foreground">% Costo/Venta</p>
+                            <p className={`text-sm font-semibold ${
+                              pctCosto !== null
+                                ? pctCosto <= 30 ? 'text-emerald-700'
+                                  : pctCosto <= 40 ? 'text-amber-600'
                                   : 'text-red-600'
-                              : ''
-                          }`}>
-                            {hasCosts && importeNeto
-                              ? `${Math.round((valuePerPortion / importeNeto) * 100)}%`
-                              : '—'}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">Margen neto</p>
-                          <p className="text-sm font-semibold">
-                            {hasCosts && importeNeto
-                              ? `$${formatNumber(importeNeto - valuePerPortion)}`
-                              : '—'}
-                          </p>
-                        </div>
-                      </>
-                    )}
+                                : ''
+                            }`}>
+                              {pctCosto !== null ? `${pctCosto}%` : '—'}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">Margen neto</p>
+                            <p className="text-sm font-semibold text-emerald-700">
+                              {margen !== null ? `$${formatNumber(margen)}` : '—'}
+                            </p>
+                          </div>
+                          <div className="text-center border-l border-border/40">
+                            <p className="text-xs text-muted-foreground">% Utilidad</p>
+                            <p className={`text-sm font-semibold ${
+                              pctUtilidad !== null
+                                ? pctUtilidad >= 70 ? 'text-emerald-700'
+                                  : pctUtilidad >= 60 ? 'text-amber-600'
+                                  : 'text-red-600'
+                                : ''
+                            }`}>
+                              {pctUtilidad !== null ? `${pctUtilidad}%` : '—'}
+                            </p>
+                          </div>
+                        </>
+                      )
+                    })()}
                   </div>
                 </div>
+
+                {/* Comments */}
+                {recipe.comments && (
+                  <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                    <p className="text-xs font-medium text-amber-800 mb-1 flex items-center gap-1">
+                      <BookOpen className="h-3 w-3" /> Notas de preparación
+                    </p>
+                    <p className="text-sm text-amber-900 whitespace-pre-wrap">{recipe.comments}</p>
+                  </div>
+                )}
 
                 {/* Images */}
                 {(recipe.image_urls || []).length > 0 && (

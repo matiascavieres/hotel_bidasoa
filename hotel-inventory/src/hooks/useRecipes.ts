@@ -72,6 +72,7 @@ export function useCreateRecipe() {
       description,
       portions,
       grupo,
+      comments,
       ingredients,
       imageFiles,
     }: {
@@ -79,13 +80,14 @@ export function useCreateRecipe() {
       description?: string
       portions?: number
       grupo?: string
+      comments?: string
       ingredients: { product_id: string; quantity_ml: number; unit: RecipeUnit; price_per_kg?: number; notes?: string }[]
       imageFiles?: File[]
     }) => {
       // 1. Create recipe
       const { data: recipe, error: recipeError } = await supabase
         .from('recipes')
-        .insert({ name, description: description || null, portions: portions ?? 1, grupo: grupo || null })
+        .insert({ name, description: description || null, portions: portions ?? 1, grupo: grupo || null, comments: comments || null } as Record<string, unknown>)
         .select()
         .single()
 
@@ -135,6 +137,7 @@ export function useUpdateRecipe() {
       description,
       portions,
       grupo,
+      comments,
       ingredients,
       imageFiles,
       existingImagePaths,
@@ -144,6 +147,7 @@ export function useUpdateRecipe() {
       description?: string | null
       portions?: number
       grupo?: string | null
+      comments?: string | null
       ingredients: { product_id: string; quantity_ml: number; unit: RecipeUnit; price_per_kg?: number; notes?: string }[]
       imageFiles?: File[]
       existingImagePaths?: string[]
@@ -162,6 +166,7 @@ export function useUpdateRecipe() {
           description: description || null,
           portions: portions ?? 1,
           grupo: grupo || null,
+          comments: comments || null,
           image_urls: allImagePaths,
         } as Record<string, unknown>)
         .eq('id', id)
