@@ -1121,6 +1121,13 @@ function RecipeRow({ recipe, expanded, onToggle, onEdit, onDelete, importeVenta 
   const valuePerPortion = portions > 0 ? Math.round(productionValue / portions) : 0
   const hasCosts = productionValue > 0
 
+  // KPIs — calculados una vez, usados en header colapsado Y en RESUMEN expandido
+  const pctCosto = hasCosts && importeNeto
+    ? Math.round((valuePerPortion / importeNeto) * 100)
+    : null
+  const pctUtilidad = pctCosto !== null ? 100 - pctCosto : null
+  const margen = hasCosts && importeNeto ? importeNeto - valuePerPortion : null
+
   return (
     <div className="rounded-lg border bg-card overflow-hidden">
       {/* Row header */}
@@ -1151,13 +1158,18 @@ function RecipeRow({ recipe, expanded, onToggle, onEdit, onDelete, importeVenta 
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+          <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
             <Badge variant="outline" className="text-xs">
               {ingredients.length} ingredientes
             </Badge>
             {hasCosts && (
               <Badge className="text-xs bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100">
                 Costo ${formatNumber(productionValue)}
+              </Badge>
+            )}
+            {hasCosts && portions > 1 && (
+              <Badge className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50">
+                /porción ${formatNumber(valuePerPortion)}
               </Badge>
             )}
             {importeVenta && (
@@ -1168,6 +1180,33 @@ function RecipeRow({ recipe, expanded, onToggle, onEdit, onDelete, importeVenta 
             {importeNeto && (
               <Badge className="text-xs bg-violet-100 text-violet-800 border-violet-200 hover:bg-violet-100">
                 Neto ${formatNumber(importeNeto)}
+              </Badge>
+            )}
+            {pctCosto !== null && (
+              <Badge className={`text-xs border hover:opacity-100 ${
+                pctCosto <= 30
+                  ? 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                  : pctCosto <= 40
+                  ? 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100'
+                  : 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100'
+              }`}>
+                %C/V {pctCosto}%
+              </Badge>
+            )}
+            {margen !== null && (
+              <Badge className="text-xs bg-teal-100 text-teal-800 border-teal-200 hover:bg-teal-100">
+                Margen ${formatNumber(margen)}
+              </Badge>
+            )}
+            {pctUtilidad !== null && (
+              <Badge className={`text-xs border hover:opacity-100 ${
+                pctUtilidad >= 70
+                  ? 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                  : pctUtilidad >= 60
+                  ? 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100'
+                  : 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100'
+              }`}>
+                Util {pctUtilidad}%
               </Badge>
             )}
           </div>
@@ -1314,13 +1353,7 @@ function RecipeRow({ recipe, expanded, onToggle, onEdit, onDelete, importeVenta 
                         {hasCosts ? `$${formatNumber(valuePerPortion)}` : '—'}
                       </p>
                     </div>
-                    {importeVenta && (() => {
-                      const pctCosto = hasCosts && importeNeto
-                        ? Math.round((valuePerPortion / importeNeto) * 100)
-                        : null
-                      const pctUtilidad = pctCosto !== null ? 100 - pctCosto : null
-                      const margen = hasCosts && importeNeto ? importeNeto - valuePerPortion : null
-                      return (
+                    {importeVenta && (
                         <>
                           <div className="text-center border-l border-border/40">
                             <p className="text-xs text-muted-foreground">Imp. Venta</p>
@@ -1361,8 +1394,7 @@ function RecipeRow({ recipe, expanded, onToggle, onEdit, onDelete, importeVenta 
                             </p>
                           </div>
                         </>
-                      )
-                    })()}
+                    )}
                   </div>
                 </div>
 
