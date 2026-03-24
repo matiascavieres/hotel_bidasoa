@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   Plus,
   Upload,
@@ -11,6 +11,7 @@ import {
   ChevronUp,
   FileSpreadsheet,
   Tag,
+  Check,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useToast } from '@/hooks/use-toast'
 import {
   useRecipes,
@@ -43,7 +45,8 @@ import { useProducts } from '@/hooks/useProducts'
 import { useCategories, useCreateProduct } from '@/hooks/useInventory'
 import { RecipeImportWizard } from '@/components/recipes/RecipeImportWizard'
 import { CasaSanzImportWizard } from '@/components/recipes/CasaSanzImportWizard'
-import type { Recipe, RecipeIngredient, RecipeUnit } from '@/types'
+import { cn } from '@/lib/utils'
+import type { Recipe, RecipeIngredient, RecipeUnit, Product } from '@/types'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -71,6 +74,194 @@ interface RecipeFormIngredient {
 }
 
 const NEW_PRODUCT_SENTINEL = '__new__'
+
+// ─── ProductGridPicker ────────────────────────────────────────────────────────
+// Selector de producto estilo TFT: grilla multi-columna agrupada por categoría
+
+interface ProductGridPickerProps {
+  products: Product[]
+  value: string
+  onSelect: (id: string) => void
+  onCreateNew: () => void
+}
+
+function ProductGridPicker({ products, value, onSelect, onCreateNew }: ProductGridPickerProps) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+
+  const selectedProduct = products.find((p) => p.id === value)
+
+  const filtered = search
+    ? products.filter(
+        (p) =>
+          p.name.toLowerCase().includes(search.toLowerCase()) ||
+          (p.category?.name || '').toLowerCase().includes(search.toLowerCase())
+      )
+    : products
+
+  const grouped = filtered.reduce(
+    (acc, p) => {
+      const cat = p.category?.name || 'Sin categoría'
+      if (!acc[cat]) acc[cat] = []
+      acc[cat].push(p)
+      return acc
+    },
+    {} as Record<string, Product[]>
+  )
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="h-8 w-full flex items-center justify-between rounded-md border border-input bg-background px-3 text-sm text-left hover:bg-accent transition-colors truncate"
+        >
+          <span className={cn('truncate', !selectedProduct && 'text-muted-foreground')}>
+            {selectedProduct?.name || 'Producto...'}
+          </span>
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0 ml-1" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="p-0 w-[520px]"
+        align="start"
+        side="bottom"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        {/* Search + Create */}
+        <div className="p-2 border-b space-y-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar producto o categoría..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-8 pl-8 text-sm"
+              autoFocus
+            />
+          </div>
+          <button
+            type="button"
+            className="w-full flex items-center gap-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 px-3 py-2 text-sm font-semibold transition-colors"
+            onClick={() => {
+              setOpen(false)
+              onCreateNew()
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            Crear nuevo producto en el catálogo
+          </button>
+        </div>
+
+        {/* Product grid */}
+        <div className="max-h-72 overflow-y-auto p-2">
+          {Object.keys(grouped).length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">Sin resultados</p>
+          ) : (
+            Object.entries(grouped).map(([cat, prods]) => (
+              <div key={cat} className="mb-3 last:mb-0">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1 mb-1">
+                  {cat}
+                </p>
+                <div className="grid grid-cols-3 gap-1">
+                  {prods.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={cn(
+                        'text-left text-xs px-2 py-1.5 rounded border transition-colors truncate',
+                        p.id === value
+                          ? 'bg-primary/10 border-primary/30 text-primary font-semibold'
+                          : 'border-transparent hover:bg-accent hover:border-border'
+                      )}
+                      onClick={() => {
+                        onSelect(p.id)
+                        setOpen(false)
+                        setSearch('')
+                      }}
+                      title={p.name}
+                    >
+                      {p.id === value && <Check className="inline h-3 w-3 mr-0.5 shrink-0" />}
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+// ─── GrupoCombobox ────────────────────────────────────────────────────────────
+// Input con sugerencias de grupos existentes en grilla
+
+interface GrupoComboboxProps {
+  value: string
+  onChange: (v: string) => void
+  existingGrupos: string[]
+}
+
+function GrupoCombobox({ value, onChange, existingGrupos }: GrupoComboboxProps) {
+  const [open, setOpen] = useState(false)
+
+  const filtered = existingGrupos.filter((g) =>
+    g.toLowerCase().includes(value.toLowerCase())
+  )
+
+  const showDropdown = open && filtered.length > 0
+
+  return (
+    <Popover open={showDropdown} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Input
+          value={value}
+          onChange={(e) => {
+            onChange(e.target.value)
+            setOpen(true)
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          placeholder="Ej: Salados del Futuro"
+        />
+      </PopoverTrigger>
+      <PopoverContent
+        className="p-2"
+        style={{ width: 'var(--radix-popover-trigger-width)' }}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={() => setOpen(false)}
+      >
+        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1 mb-2">
+          Grupos existentes
+        </p>
+        <div className="grid grid-cols-2 gap-1">
+          {filtered.map((g) => (
+            <button
+              key={g}
+              type="button"
+              className={cn(
+                'text-left text-sm px-2 py-1.5 rounded border transition-colors truncate',
+                g === value
+                  ? 'bg-primary/10 border-primary/30 text-primary font-semibold'
+                  : 'border-transparent hover:bg-accent hover:border-border'
+              )}
+              onMouseDown={(e) => {
+                e.preventDefault()
+                onChange(g)
+                setOpen(false)
+              }}
+              title={g}
+            >
+              {g}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 // ─── component ───────────────────────────────────────────────────────────────
 
@@ -111,6 +302,13 @@ export default function Recipes() {
 
   // Delete confirm
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  // Existing grupos for autocomplete
+  const existingGrupos = useMemo(
+    () =>
+      [...new Set((recipes || []).map((r) => r.grupo).filter(Boolean) as string[])].sort(),
+    [recipes]
+  )
 
   const filteredRecipes = (recipes || []).filter(
     (r) =>
@@ -172,7 +370,6 @@ export default function Recipes() {
 
   function handleProductSelect(idx: number, value: string) {
     if (value === NEW_PRODUCT_SENTINEL) {
-      // Open inline product creation
       setNewProductForIdx(idx)
       setNewProdCode('')
       setNewProdName('')
@@ -255,7 +452,6 @@ export default function Recipes() {
         formatMl: newProdFormatMl || 0,
         salePrice: typeof newProdSalePrice === 'number' ? newProdSalePrice : undefined,
       })
-      // Auto-select the new product in the ingredient row
       if (newProductForIdx >= 0) {
         updateIngredientRow(newProductForIdx, 'product_id', product.id)
       }
@@ -337,7 +533,7 @@ export default function Recipes() {
 
       {/* ─── Create/Edit Recipe Dialog ─────────────────────────────────────── */}
       <Dialog open={showFormDialog} onOpenChange={setShowFormDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>{editingRecipe ? 'Editar receta' : 'Nueva receta'}</DialogTitle>
             <DialogDescription>
@@ -373,10 +569,10 @@ export default function Recipes() {
                   <Tag className="h-3.5 w-3.5" />
                   Grupo (ventas)
                 </Label>
-                <Input
+                <GrupoCombobox
                   value={formGrupo}
-                  onChange={(e) => setFormGrupo(e.target.value)}
-                  placeholder="Ej: Salados del Futuro"
+                  onChange={setFormGrupo}
+                  existingGrupos={existingGrupos}
                 />
                 <p className="text-xs text-muted-foreground">
                   Debe coincidir con el campo "Grupo" del reporte FNS
@@ -406,28 +602,16 @@ export default function Recipes() {
 
             <div className="space-y-2">
               {formIngredients.map((ing, idx) => (
-                <div key={idx} className="grid grid-cols-[1fr_80px_90px_100px_32px] gap-2 items-center">
-                  <Select
+                <div
+                  key={idx}
+                  className="grid grid-cols-[1fr_80px_90px_100px_32px] gap-2 items-center"
+                >
+                  <ProductGridPicker
+                    products={products || []}
                     value={ing.product_id}
-                    onValueChange={(v) => handleProductSelect(idx, v)}
-                  >
-                    <SelectTrigger className="h-8 text-sm">
-                      <SelectValue placeholder="Producto..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(products || []).map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                      <SelectItem
-                        value={NEW_PRODUCT_SENTINEL}
-                        className="text-primary font-medium border-t mt-1 pt-1"
-                      >
-                        + Crear nuevo producto
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                    onSelect={(id) => updateIngredientRow(idx, 'product_id', id)}
+                    onCreateNew={() => handleProductSelect(idx, NEW_PRODUCT_SENTINEL)}
+                  />
 
                   <Input
                     type="number"
@@ -593,7 +777,9 @@ export default function Recipes() {
                   min="0"
                   value={newProdSalePrice}
                   onChange={(e) =>
-                    setNewProdSalePrice(e.target.value === '' ? '' : parseFloat(e.target.value) || 0)
+                    setNewProdSalePrice(
+                      e.target.value === '' ? '' : parseFloat(e.target.value) || 0
+                    )
                   }
                   placeholder="0"
                 />
@@ -723,7 +909,10 @@ function RecipeRow({ recipe, expanded, onToggle, onEdit, onDelete }: RecipeRowPr
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={(e) => { e.stopPropagation(); onEdit() }}
+            onClick={(e) => {
+              e.stopPropagation()
+              onEdit()
+            }}
           >
             <Pencil className="h-3.5 w-3.5" />
           </Button>
@@ -731,7 +920,10 @@ function RecipeRow({ recipe, expanded, onToggle, onEdit, onDelete }: RecipeRowPr
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-destructive hover:text-destructive"
-            onClick={(e) => { e.stopPropagation(); onDelete() }}
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete()
+            }}
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
