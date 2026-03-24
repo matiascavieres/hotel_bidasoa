@@ -95,7 +95,7 @@ export function useCreateRecipe() {
       if (imageFiles && imageFiles.length > 0) {
         const imagePaths = await uploadRecipeImages(recipe.id, imageFiles)
         if (imagePaths.length > 0) {
-          await supabase.from('recipes').update({ image_urls: imagePaths }).eq('id', recipe.id)
+          await supabase.from('recipes').update({ image_urls: imagePaths } as Record<string, unknown>).eq('id', recipe.id)
         }
       }
 
@@ -163,7 +163,7 @@ export function useUpdateRecipe() {
           portions: portions ?? 1,
           grupo: grupo || null,
           image_urls: allImagePaths,
-        })
+        } as Record<string, unknown>)
         .eq('id', id)
 
       if (recipeError) throw recipeError
