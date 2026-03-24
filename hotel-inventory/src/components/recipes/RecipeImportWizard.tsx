@@ -116,9 +116,10 @@ export function RecipeImportWizard({ open, onClose, onSuccess }: RecipeImportWiz
           return {
             product_id: mapping.productId,
             quantity_ml: mapping.quantityMl,
+            unit: 'ml' as const,
           }
         })
-        .filter((i): i is { product_id: string; quantity_ml: number } => i !== null)
+        .filter((i): i is { product_id: string; quantity_ml: number; unit: 'ml' } => i !== null)
 
       return { name: recipe.name, ingredients }
     })

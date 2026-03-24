@@ -29,6 +29,9 @@ export type LogAction =
 // Unit types for display
 export type UnitType = 'ml' | 'bottles' | 'units'
 
+// Recipe ingredient unit
+export type RecipeUnit = 'gr' | 'kg' | 'ml' | 'lt'
+
 // User
 export interface User {
   id: string
@@ -228,11 +231,13 @@ export interface StockSummary {
   pending_requests: number
 }
 
-// Recipe (receta de cóctel)
+// Recipe (receta de cóctel o plato)
 export interface Recipe {
   id: string
   name: string
   description: string | null
+  portions: number
+  grupo: string | null
   is_active: boolean
   created_at: string
   updated_at: string
@@ -246,6 +251,8 @@ export interface RecipeIngredient {
   recipe_id: string
   product_id: string
   quantity_ml: number
+  unit: RecipeUnit
+  price_per_kg: number | null
   notes: string | null
   created_at: string
   // Joined fields

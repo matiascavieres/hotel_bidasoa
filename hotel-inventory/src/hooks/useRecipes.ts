@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import type { Recipe } from '@/types'
+import type { Recipe, RecipeUnit } from '@/types'
 
 export function useRecipes() {
   return useQuery({
@@ -54,16 +54,20 @@ export function useCreateRecipe() {
     mutationFn: async ({
       name,
       description,
+      portions,
+      grupo,
       ingredients,
     }: {
       name: string
       description?: string
-      ingredients: { product_id: string; quantity_ml: number; notes?: string }[]
+      portions?: number
+      grupo?: string
+      ingredients: { product_id: string; quantity_ml: number; unit: RecipeUnit; price_per_kg?: number; notes?: string }[]
     }) => {
       // 1. Create recipe
       const { data: recipe, error: recipeError } = await supabase
         .from('recipes')
-        .insert({ name, description: description || null })
+        .insert({ name, description: description || null, portions: portions ?? 1, grupo: grupo || null })
         .select()
         .single()
 
@@ -78,6 +82,8 @@ export function useCreateRecipe() {
               recipe_id: recipe.id,
               product_id: ing.product_id,
               quantity_ml: ing.quantity_ml,
+              unit: ing.unit,
+              price_per_kg: ing.price_per_kg ?? null,
               notes: ing.notes || null,
             }))
           )
@@ -101,17 +107,21 @@ export function useUpdateRecipe() {
       id,
       name,
       description,
+      portions,
+      grupo,
       ingredients,
     }: {
       id: string
       name: string
       description?: string | null
-      ingredients: { product_id: string; quantity_ml: number; notes?: string }[]
+      portions?: number
+      grupo?: string | null
+      ingredients: { product_id: string; quantity_ml: number; unit: RecipeUnit; price_per_kg?: number; notes?: string }[]
     }) => {
       // 1. Update recipe metadata
       const { error: recipeError } = await supabase
         .from('recipes')
-        .update({ name, description: description || null })
+        .update({ name, description: description || null, portions: portions ?? 1, grupo: grupo || null })
         .eq('id', id)
 
       if (recipeError) throw recipeError
@@ -133,6 +143,8 @@ export function useUpdateRecipe() {
               recipe_id: id,
               product_id: ing.product_id,
               quantity_ml: ing.quantity_ml,
+              unit: ing.unit,
+              price_per_kg: ing.price_per_kg ?? null,
               notes: ing.notes || null,
             }))
           )
@@ -167,7 +179,7 @@ export function useDeleteRecipe() {
 
 /**
  * Bulk create multiple recipes with their ingredients.
- * Used by the CSV import wizard.
+ * Used by the CSV/XLSX import wizards.
  */
 export function useBulkCreateRecipes() {
   const queryClient = useQueryClient()
@@ -176,7 +188,9 @@ export function useBulkCreateRecipes() {
     mutationFn: async (
       recipesToCreate: {
         name: string
-        ingredients: { product_id: string; quantity_ml: number; notes?: string }[]
+        portions?: number
+        grupo?: string
+        ingredients: { product_id: string; quantity_ml: number; unit: RecipeUnit; price_per_kg?: number; notes?: string }[]
       }[]
     ) => {
       const results: { created: number; errors: string[] } = {
@@ -189,7 +203,7 @@ export function useBulkCreateRecipes() {
           // Create recipe
           const { data: recipe, error: recipeError } = await supabase
             .from('recipes')
-            .insert({ name: recipeData.name })
+            .insert({ name: recipeData.name, portions: recipeData.portions ?? 1, grupo: recipeData.grupo || null })
             .select()
             .single()
 
@@ -211,6 +225,8 @@ export function useBulkCreateRecipes() {
                   recipe_id: recipe.id,
                   product_id: ing.product_id,
                   quantity_ml: ing.quantity_ml,
+                  unit: ing.unit,
+                  price_per_kg: ing.price_per_kg ?? null,
                   notes: ing.notes || null,
                 }))
               )
@@ -221,7 +237,7 @@ export function useBulkCreateRecipes() {
           }
 
           results.created++
-        } catch (err) {
+        } catch {
           results.errors.push(`${recipeData.name}: Error inesperado`)
         }
       }
