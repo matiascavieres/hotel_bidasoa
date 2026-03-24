@@ -1023,6 +1023,31 @@ function ExistingImageThumb({ path, onRemove }: { path: string; onRemove: () => 
   )
 }
 
+// ─── RecipeThumbnail ──────────────────────────────────────────────────────────
+
+function RecipeThumbnail({ path }: { path: string }) {
+  const [url, setUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    supabase.storage
+      .from('product-images')
+      .createSignedUrl(path, 3600)
+      .then(({ data }) => setUrl(data?.signedUrl || null))
+  }, [path])
+
+  return (
+    <div className="w-12 h-12 rounded-md overflow-hidden border bg-muted shrink-0">
+      {url ? (
+        <img src={url} alt="" className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center">
+          <ImageIcon className="h-4 w-4 text-muted-foreground/40" />
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── RecipeRow ────────────────────────────────────────────────────────────────
 
 interface RecipeRowProps {
@@ -1059,6 +1084,9 @@ function RecipeRow({ recipe, expanded, onToggle, onEdit, onDelete }: RecipeRowPr
             <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
           ) : (
             <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+          )}
+          {(recipe.image_urls || []).length > 0 && (
+            <RecipeThumbnail path={recipe.image_urls[0]} />
           )}
           <div className="min-w-0 flex-1">
             <p className="font-semibold truncate">{recipe.name}</p>
