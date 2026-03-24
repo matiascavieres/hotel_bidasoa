@@ -123,7 +123,7 @@ function ProductGridPicker({ products, value, onSelect, onCreateNew }: ProductGr
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="p-0 w-[520px]"
+        className="p-0 w-[720px]"
         align="start"
         side="bottom"
         onOpenAutoFocus={(e) => e.preventDefault()}
@@ -163,7 +163,7 @@ function ProductGridPicker({ products, value, onSelect, onCreateNew }: ProductGr
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1 mb-1">
                   {cat}
                 </p>
-                <div className="grid grid-cols-3 gap-1">
+                <div className="grid grid-cols-4 gap-1">
                   {prods.map((p) => (
                     <button
                       key={p.id}
@@ -208,58 +208,51 @@ function GrupoCombobox({ value, onChange, existingGrupos }: GrupoComboboxProps) 
   const [open, setOpen] = useState(false)
 
   const filtered = existingGrupos.filter((g) =>
-    g.toLowerCase().includes(value.toLowerCase())
+    !value || g.toLowerCase().includes(value.toLowerCase())
   )
 
-  const showDropdown = open && filtered.length > 0
-
   return (
-    <Popover open={showDropdown} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Input
-          value={value}
-          onChange={(e) => {
-            onChange(e.target.value)
-            setOpen(true)
-          }}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
-          placeholder="Ej: Salados del Futuro"
-        />
-      </PopoverTrigger>
-      <PopoverContent
-        className="p-2"
-        style={{ width: 'var(--radix-popover-trigger-width)' }}
-        onOpenAutoFocus={(e) => e.preventDefault()}
-        onInteractOutside={() => setOpen(false)}
-      >
-        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1 mb-2">
-          Grupos existentes
-        </p>
-        <div className="grid grid-cols-2 gap-1">
-          {filtered.map((g) => (
-            <button
-              key={g}
-              type="button"
-              className={cn(
-                'text-left text-sm px-2 py-1.5 rounded border transition-colors truncate',
-                g === value
-                  ? 'bg-primary/10 border-primary/30 text-primary font-semibold'
-                  : 'border-transparent hover:bg-accent hover:border-border'
-              )}
-              onMouseDown={(e) => {
-                e.preventDefault()
-                onChange(g)
-                setOpen(false)
-              }}
-              title={g}
-            >
-              {g}
-            </button>
-          ))}
+    <div className="relative">
+      <Input
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value)
+          if (!open) setOpen(true)
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder="Ej: Salados del Futuro"
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-50 top-full mt-1 left-0 w-full min-w-[320px] rounded-md border bg-popover shadow-md p-2">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1 mb-2">
+            Grupos existentes
+          </p>
+          <div className="grid grid-cols-2 gap-1">
+            {filtered.map((g) => (
+              <button
+                key={g}
+                type="button"
+                className={cn(
+                  'text-left text-sm px-2 py-1.5 rounded border transition-colors truncate',
+                  g === value
+                    ? 'bg-primary/10 border-primary/30 text-primary font-semibold'
+                    : 'border-transparent hover:bg-accent hover:border-border'
+                )}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  onChange(g)
+                  setOpen(false)
+                }}
+                title={g}
+              >
+                {g}
+              </button>
+            ))}
+          </div>
         </div>
-      </PopoverContent>
-    </Popover>
+      )}
+    </div>
   )
 }
 
