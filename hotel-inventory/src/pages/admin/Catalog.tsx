@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from 'react'
-import { Plus, Edit2, Upload, Search, Loader2, LayoutList, LayoutGrid, ScanBarcode, FileText, CheckCircle2, AlertTriangle, Check } from 'lucide-react'
+import { Plus, Edit2, Upload, Search, Loader2, LayoutList, LayoutGrid, FileText, CheckCircle2, AlertTriangle, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -14,19 +14,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import { useProducts, useCategories, useCreateProduct, useUpdateProduct, useCreateCategory } from '@/hooks/useInventory'
 import { useCreateLog } from '@/hooks/useLogs'
 import { useAuth } from '@/context/AuthContext'
-import { BarcodeScanner } from '@/components/ui/barcode-scanner'
 import { CatalogStockCoverage } from '@/components/inventory/CatalogStockCoverage'
 import { supabase } from '@/lib/supabase'
 import { useQueryClient } from '@tanstack/react-query'
@@ -40,6 +32,7 @@ interface Product {
   category: { id: string; name: string } | null
   format_ml: number | null
   sale_price: number | null
+  price_per_kg?: number | null
 }
 
 export default function AdminCatalog() {
@@ -55,7 +48,6 @@ export default function AdminCatalog() {
     return (localStorage.getItem('catalog-view-mode') as 'list' | 'grid') || 'list'
   })
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
-  const [isScannerOpen, setIsScannerOpen] = useState(false)
   const [isCreatingCategory, setIsCreatingCategory] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [formData, setFormData] = useState({
@@ -64,6 +56,7 @@ export default function AdminCatalog() {
     categoryId: '',
     format_ml: 0,
     sale_price: 0,
+    price_per_kg: 0,
   })
 
   const queryClient = useQueryClient()
@@ -112,6 +105,7 @@ export default function AdminCatalog() {
         categoryId: product.category_id,
         format_ml: product.format_ml || 0,
         sale_price: product.sale_price || 0,
+        price_per_kg: product.price_per_kg || 0,
       })
     } else {
       setEditingProduct(null)
@@ -121,6 +115,7 @@ export default function AdminCatalog() {
         categoryId: '',
         format_ml: 0,
         sale_price: 0,
+        price_per_kg: 0,
       })
     }
     setIsProductModalOpen(true)
@@ -145,6 +140,7 @@ export default function AdminCatalog() {
           categoryId: formData.categoryId,
           formatMl: formData.format_ml,
           salePrice: formData.sale_price || undefined,
+          pricePerKg: formData.price_per_kg || undefined,
         },
         {
           onSuccess: () => {
@@ -205,6 +201,7 @@ export default function AdminCatalog() {
           categoryId: formData.categoryId,
           formatMl: formData.format_ml,
           salePrice: formData.sale_price || undefined,
+          pricePerKg: formData.price_per_kg || undefined,
         },
         {
           onSuccess: () => {
@@ -533,7 +530,7 @@ export default function AdminCatalog() {
 
       {/* Product Form Modal */}
       <Dialog open={isProductModalOpen} onOpenChange={setIsProductModalOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-4xl w-[95vw] max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
@@ -545,121 +542,105 @@ export default function AdminCatalog() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-5 py-4">
+            {/* Row 1: Código + Nombre */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="code">Codigo</Label>
-                <div className="flex gap-1">
+                <Label htmlFor="code">Código</Label>
+                <Input
+                  id="code"
+                  value={formData.code}
+                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                  placeholder="Ej: ABR-001"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">Nombre *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Ej: Arroz grano corto"
+                />
+              </div>
+            </div>
+
+            {/* Row 2: Categoría — grid 3 columnas */}
+            <div className="space-y-2">
+              <Label>Categoría *</Label>
+              {isCreatingCategory ? (
+                <div className="flex gap-2 items-center">
                   <Input
-                    id="code"
-                    value={formData.code}
-                    onChange={(e) =>
-                      setFormData({ ...formData, code: e.target.value })
-                    }
+                    autoFocus
+                    placeholder="Nombre de nueva categoría"
+                    value={newCategoryName}
+                    onChange={e => setNewCategoryName(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') handleCreateCategory()
+                      if (e.key === 'Escape') { setIsCreatingCategory(false); setNewCategoryName('') }
+                    }}
                     className="flex-1"
                   />
                   <Button
                     type="button"
-                    variant="outline"
-                    size="icon"
-                    className="shrink-0"
-                    onClick={() => setIsScannerOpen(true)}
-                    title="Escanear codigo de barras"
+                    size="sm"
+                    onClick={handleCreateCategory}
+                    disabled={createCategoryMutation.isPending || !newCategoryName.trim()}
                   >
-                    <ScanBarcode className="h-4 w-4" />
+                    {createCategoryMutation.isPending
+                      ? <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                      : <Check className="h-4 w-4 mr-1" />}
+                    Crear
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => { setIsCreatingCategory(false); setNewCategoryName('') }}
+                  >
+                    Cancelar
                   </Button>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Categoria</Label>
-                {isCreatingCategory ? (
-                  <div className="flex gap-1">
-                    <Input
-                      autoFocus
-                      placeholder="Nombre de categoría"
-                      value={newCategoryName}
-                      onChange={e => setNewCategoryName(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') handleCreateCategory()
-                        if (e.key === 'Escape') { setIsCreatingCategory(false); setNewCategoryName('') }
-                      }}
-                      className="flex-1"
-                    />
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="default"
-                      className="shrink-0"
-                      onClick={handleCreateCategory}
-                      disabled={createCategoryMutation.isPending || !newCategoryName.trim()}
-                    >
-                      {createCategoryMutation.isPending
-                        ? <Loader2 className="h-4 w-4 animate-spin" />
-                        : <Check className="h-4 w-4" />}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="outline"
-                      className="shrink-0"
-                      onClick={() => { setIsCreatingCategory(false); setNewCategoryName('') }}
-                    >
-                      ×
-                    </Button>
+              ) : (
+                <div className="rounded-md border p-3">
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    {(categories || []).map((cat) => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, categoryId: cat.id })}
+                        className={`text-left text-sm px-3 py-2 rounded-md border transition-colors truncate ${
+                          formData.categoryId === cat.id
+                            ? 'bg-primary text-primary-foreground border-primary font-semibold'
+                            : 'border-border hover:bg-accent hover:border-primary/40'
+                        }`}
+                        title={cat.name}
+                      >
+                        {cat.name}
+                      </button>
+                    ))}
                   </div>
-                ) : (
-                  <Select
-                    value={formData.categoryId}
-                    onValueChange={(v) => {
-                      if (v === '__new__') {
-                        setIsCreatingCategory(true)
-                      } else {
-                        setFormData({ ...formData, categoryId: v })
-                      }
-                    }}
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatingCategory(true)}
+                    className="w-full text-sm text-center py-2 rounded-md border border-dashed border-primary/50 text-primary hover:bg-primary/5 transition-colors font-medium"
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(categories || []).map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                      <SelectItem value="__new__" className="text-primary font-medium">
-                        + Crear nueva categoría
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
+                    + Nueva categoría
+                  </button>
+                </div>
+              )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="name">Nombre</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+            {/* Row 3: Formato + Precio venta + Precio x kg */}
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="format_ml">Formato (ml)</Label>
+                <Label htmlFor="format_ml">Cantidad (ml / gr)</Label>
                 <Input
                   id="format_ml"
                   type="number"
                   value={formData.format_ml}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      format_ml: parseInt(e.target.value) || 0,
-                    })
-                  }
+                  onChange={(e) => setFormData({ ...formData, format_ml: parseInt(e.target.value) || 0 })}
+                  placeholder="0"
                 />
               </div>
               <div className="space-y-2">
@@ -668,12 +649,18 @@ export default function AdminCatalog() {
                   id="sale_price"
                   type="number"
                   value={formData.sale_price}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      sale_price: parseInt(e.target.value) || 0,
-                    })
-                  }
+                  onChange={(e) => setFormData({ ...formData, sale_price: parseInt(e.target.value) || 0 })}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="price_per_kg">Precio x kg/lt ($)</Label>
+                <Input
+                  id="price_per_kg"
+                  type="number"
+                  value={formData.price_per_kg}
+                  onChange={(e) => setFormData({ ...formData, price_per_kg: parseInt(e.target.value) || 0 })}
+                  placeholder="0"
                 />
               </div>
             </div>
@@ -851,12 +838,6 @@ export default function AdminCatalog() {
         </DialogContent>
       </Dialog>
 
-      {/* Barcode Scanner */}
-      <BarcodeScanner
-        open={isScannerOpen}
-        onClose={() => setIsScannerOpen(false)}
-        onScan={(code) => setFormData(prev => ({ ...prev, code }))}
-      />
     </div>
   )
 }

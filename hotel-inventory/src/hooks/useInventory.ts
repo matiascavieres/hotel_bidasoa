@@ -166,12 +166,14 @@ export function useCreateProduct() {
       categoryId,
       formatMl,
       salePrice,
+      pricePerKg,
     }: {
       code: string
       name: string
       categoryId: string
       formatMl: number
       salePrice?: number
+      pricePerKg?: number
     }) => {
       const { data, error } = await supabase
         .from('products')
@@ -181,7 +183,9 @@ export function useCreateProduct() {
           category_id: categoryId,
           format_ml: formatMl,
           sale_price: salePrice,
-        })
+          price_per_kg: pricePerKg ?? null,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any)
         .select(`
           *,
           category:categories(*)
@@ -208,6 +212,7 @@ export function useUpdateProduct() {
       categoryId,
       formatMl,
       salePrice,
+      pricePerKg,
       imageUrl,
     }: {
       id: string
@@ -216,6 +221,7 @@ export function useUpdateProduct() {
       categoryId: string
       formatMl: number
       salePrice?: number
+      pricePerKg?: number | null
       imageUrl?: string | null
     }) => {
       const updateData: Record<string, unknown> = {
@@ -224,6 +230,7 @@ export function useUpdateProduct() {
         category_id: categoryId,
         format_ml: formatMl,
         sale_price: salePrice,
+        price_per_kg: pricePerKg ?? null,
       }
 
       // Only include image_url if explicitly provided (including null to clear)

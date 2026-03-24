@@ -72,6 +72,7 @@ export interface Product {
   category_id: string
   format_ml: number | null
   sale_price: number | null
+  price_per_kg?: number | null
   image_url: string | null
   is_active: boolean
   supplier_id: string | null
