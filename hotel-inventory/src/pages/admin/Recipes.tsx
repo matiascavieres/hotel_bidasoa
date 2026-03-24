@@ -269,14 +269,29 @@ export default function Recipes() {
   const { data: salesGrupos } = useSalesGrupos()
   const { data: salesData } = useSalesData()
 
-  // Lookup: receta name (lowercase) → importe_unitario
-  const salesLookup = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const s of salesData || []) {
-      map.set(s.receta.toLowerCase(), s.importe_unitario)
+  // Match each recipe to its sales record (exact first, then contains-match)
+  const salesMatchByRecipeId = useMemo(() => {
+    const result = new Map<string, number>()
+    if (!salesData || !recipes) return result
+
+    for (const recipe of recipes) {
+      const rName = recipe.name.toLowerCase().trim()
+
+      // 1. Exact match
+      const exact = salesData.find((s) => s.receta.toLowerCase().trim() === rName)
+      if (exact) { result.set(recipe.id, exact.importe_unitario); continue }
+
+      // 2. Contains match (shorter string min 5 chars to avoid false positives)
+      const fuzzy = salesData.find((s) => {
+        const sName = s.receta.toLowerCase().trim()
+        const shorter = rName.length <= sName.length ? rName : sName
+        if (shorter.length < 5) return false
+        return rName.includes(sName) || sName.includes(rName)
+      })
+      if (fuzzy) result.set(recipe.id, fuzzy.importe_unitario)
     }
-    return map
-  }, [salesData])
+    return result
+  }, [salesData, recipes])
   const createRecipe = useCreateRecipe()
   const updateRecipe = useUpdateRecipe()
   const deleteRecipe = useDeleteRecipe()
@@ -567,7 +582,7 @@ export default function Recipes() {
               onToggle={() => setExpandedId(expandedId === recipe.id ? null : recipe.id)}
               onEdit={() => openEditDialog(recipe)}
               onDelete={() => setDeletingId(recipe.id)}
-              importeVenta={salesLookup.get(recipe.name.toLowerCase()) ?? null}
+              importeVenta={salesMatchByRecipeId.get(recipe.id) ?? null}
             />
           ))}
         </div>
