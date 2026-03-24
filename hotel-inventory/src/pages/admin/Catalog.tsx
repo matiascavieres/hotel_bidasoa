@@ -112,8 +112,8 @@ function CategoryCombobox({
         className={selectedCat && !open ? 'text-foreground font-medium' : ''}
       />
       {open && (
-        <div className="absolute z-50 top-full mt-1 left-0 w-full rounded-md border bg-popover shadow-lg p-2">
-          <div className="grid grid-cols-3 gap-1 max-h-52 overflow-y-auto mb-2">
+        <div className="absolute z-50 top-full mt-1 left-0 w-full rounded-md border bg-popover shadow-lg p-3">
+          <div className="grid grid-cols-3 gap-1.5 max-h-80 overflow-y-auto mb-2 pr-1">
             {filtered.length === 0 ? (
               <p className="col-span-3 text-sm text-muted-foreground text-center py-3">Sin resultados</p>
             ) : (
@@ -122,10 +122,10 @@ function CategoryCombobox({
                   key={cat.id}
                   type="button"
                   className={cn(
-                    'text-left text-sm px-2 py-1.5 rounded border transition-colors truncate',
+                    'text-left text-sm px-3 py-2 rounded-md border transition-colors truncate w-full',
                     cat.id === value
                       ? 'bg-primary/10 border-primary/30 text-primary font-semibold'
-                      : 'border-transparent hover:bg-accent hover:border-border'
+                      : 'border-border bg-background hover:bg-accent hover:border-primary/40'
                   )}
                   onMouseDown={(e) => {
                     e.preventDefault()
