@@ -20,6 +20,7 @@ import { useProducts, useCategories, useCreateProduct, useUpdateProduct, useCrea
 import { useCreateLog } from '@/hooks/useLogs'
 import { useAuth } from '@/context/AuthContext'
 import { CatalogStockCoverage } from '@/components/inventory/CatalogStockCoverage'
+import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { useQueryClient } from '@tanstack/react-query'
 import { parseWineCSV, type WineImportResult } from '@/utils/importWines'
@@ -33,6 +34,127 @@ interface Product {
   format_ml: number | null
   sale_price: number | null
   price_per_kg?: number | null
+}
+
+// ─── CategoryCombobox ─────────────────────────────────────────────────────────
+
+interface CategoryComboboxProps {
+  categories: { id: string; name: string }[]
+  value: string
+  onChange: (id: string) => void
+  isCreatingCategory: boolean
+  setIsCreatingCategory: (v: boolean) => void
+  newCategoryName: string
+  setNewCategoryName: (v: string) => void
+  onCreateCategory: () => void
+  isPending: boolean
+}
+
+function CategoryCombobox({
+  categories,
+  value,
+  onChange,
+  isCreatingCategory,
+  setIsCreatingCategory,
+  newCategoryName,
+  setNewCategoryName,
+  onCreateCategory,
+  isPending,
+}: CategoryComboboxProps) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+
+  const selectedCat = categories.find((c) => c.id === value)
+
+  const filtered = categories.filter((c) =>
+    !search || c.name.toLowerCase().includes(search.toLowerCase())
+  )
+
+  if (isCreatingCategory) {
+    return (
+      <div className="flex gap-2 items-center">
+        <Input
+          autoFocus
+          placeholder="Nombre de nueva categoría"
+          value={newCategoryName}
+          onChange={(e) => setNewCategoryName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') onCreateCategory()
+            if (e.key === 'Escape') { setIsCreatingCategory(false); setNewCategoryName('') }
+          }}
+          className="flex-1"
+        />
+        <Button type="button" size="sm" onClick={onCreateCategory} disabled={isPending || !newCategoryName.trim()}>
+          {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
+          Crear
+        </Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => { setIsCreatingCategory(false); setNewCategoryName('') }}>
+          Cancelar
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative">
+      <Input
+        value={open ? search : (selectedCat?.name ?? search)}
+        onChange={(e) => {
+          setSearch(e.target.value)
+          if (!open) setOpen(true)
+        }}
+        onFocus={() => {
+          setSearch('')
+          setOpen(true)
+        }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder="Buscar categoría..."
+        className={selectedCat && !open ? 'text-foreground font-medium' : ''}
+      />
+      {open && (
+        <div className="absolute z-50 top-full mt-1 left-0 w-full rounded-md border bg-popover shadow-lg p-2">
+          <div className="grid grid-cols-3 gap-1 max-h-52 overflow-y-auto mb-2">
+            {filtered.length === 0 ? (
+              <p className="col-span-3 text-sm text-muted-foreground text-center py-3">Sin resultados</p>
+            ) : (
+              filtered.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  className={cn(
+                    'text-left text-sm px-2 py-1.5 rounded border transition-colors truncate',
+                    cat.id === value
+                      ? 'bg-primary/10 border-primary/30 text-primary font-semibold'
+                      : 'border-transparent hover:bg-accent hover:border-border'
+                  )}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    onChange(cat.id)
+                    setSearch('')
+                    setOpen(false)
+                  }}
+                  title={cat.name}
+                >
+                  {cat.name}
+                </button>
+              ))
+            )}
+          </div>
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault()
+              setOpen(false)
+              setIsCreatingCategory(true)
+            }}
+            className="w-full text-sm text-center py-1.5 rounded border border-dashed border-primary/50 text-primary hover:bg-primary/5 transition-colors font-medium"
+          >
+            + Nueva categoría
+          </button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function AdminCatalog() {
@@ -565,70 +687,20 @@ export default function AdminCatalog() {
               </div>
             </div>
 
-            {/* Row 2: Categoría — grid 3 columnas */}
+            {/* Row 2: Categoría — combobox con búsqueda */}
             <div className="space-y-2">
               <Label>Categoría *</Label>
-              {isCreatingCategory ? (
-                <div className="flex gap-2 items-center">
-                  <Input
-                    autoFocus
-                    placeholder="Nombre de nueva categoría"
-                    value={newCategoryName}
-                    onChange={e => setNewCategoryName(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') handleCreateCategory()
-                      if (e.key === 'Escape') { setIsCreatingCategory(false); setNewCategoryName('') }
-                    }}
-                    className="flex-1"
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={handleCreateCategory}
-                    disabled={createCategoryMutation.isPending || !newCategoryName.trim()}
-                  >
-                    {createCategoryMutation.isPending
-                      ? <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                      : <Check className="h-4 w-4 mr-1" />}
-                    Crear
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => { setIsCreatingCategory(false); setNewCategoryName('') }}
-                  >
-                    Cancelar
-                  </Button>
-                </div>
-              ) : (
-                <div className="rounded-md border p-3">
-                  <div className="grid grid-cols-3 gap-2 mb-2">
-                    {(categories || []).map((cat) => (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, categoryId: cat.id })}
-                        className={`text-left text-sm px-3 py-2 rounded-md border transition-colors truncate ${
-                          formData.categoryId === cat.id
-                            ? 'bg-primary text-primary-foreground border-primary font-semibold'
-                            : 'border-border hover:bg-accent hover:border-primary/40'
-                        }`}
-                        title={cat.name}
-                      >
-                        {cat.name}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsCreatingCategory(true)}
-                    className="w-full text-sm text-center py-2 rounded-md border border-dashed border-primary/50 text-primary hover:bg-primary/5 transition-colors font-medium"
-                  >
-                    + Nueva categoría
-                  </button>
-                </div>
-              )}
+              <CategoryCombobox
+                categories={categories || []}
+                value={formData.categoryId}
+                onChange={(id) => setFormData({ ...formData, categoryId: id })}
+                isCreatingCategory={isCreatingCategory}
+                setIsCreatingCategory={setIsCreatingCategory}
+                newCategoryName={newCategoryName}
+                setNewCategoryName={setNewCategoryName}
+                onCreateCategory={handleCreateCategory}
+                isPending={createCategoryMutation.isPending}
+              />
             </div>
 
             {/* Row 3: Formato + Precio venta + Precio x kg */}
