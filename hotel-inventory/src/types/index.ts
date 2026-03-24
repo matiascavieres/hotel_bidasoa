@@ -238,6 +238,7 @@ export interface Recipe {
   description: string | null
   portions: number
   grupo: string | null
+  image_urls: string[]
   is_active: boolean
   created_at: string
   updated_at: string
