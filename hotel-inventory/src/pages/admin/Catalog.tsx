@@ -61,7 +61,6 @@ function CategoryCombobox({
   onCreateCategory,
   isPending,
 }: CategoryComboboxProps) {
-  const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
 
   const selectedCat = categories.find((c) => c.id === value)
@@ -96,63 +95,53 @@ function CategoryCombobox({
   }
 
   return (
-    <div className="relative">
-      <Input
-        value={open ? search : (selectedCat?.name ?? search)}
-        onChange={(e) => {
-          setSearch(e.target.value)
-          if (!open) setOpen(true)
-        }}
-        onFocus={() => {
-          setSearch('')
-          setOpen(true)
-        }}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        placeholder="Buscar categoría..."
-        className={selectedCat && !open ? 'text-foreground font-medium' : ''}
-      />
-      {open && (
-        <div className="absolute z-50 top-full mt-1 left-0 w-full rounded-md border bg-popover shadow-lg p-3">
-          <div className="grid grid-cols-3 gap-1.5 max-h-80 overflow-y-auto mb-2 pr-1">
-            {filtered.length === 0 ? (
-              <p className="col-span-3 text-sm text-muted-foreground text-center py-3">Sin resultados</p>
-            ) : (
-              filtered.map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  className={cn(
-                    'text-left text-sm px-3 py-2 rounded-md border transition-colors truncate w-full',
-                    cat.id === value
-                      ? 'bg-primary/10 border-primary/30 text-primary font-semibold'
-                      : 'border-border bg-background hover:bg-accent hover:border-primary/40'
-                  )}
-                  onMouseDown={(e) => {
-                    e.preventDefault()
-                    onChange(cat.id)
-                    setSearch('')
-                    setOpen(false)
-                  }}
-                  title={cat.name}
-                >
-                  {cat.name}
-                </button>
-              ))
-            )}
-          </div>
-          <button
-            type="button"
-            onMouseDown={(e) => {
-              e.preventDefault()
-              setOpen(false)
-              setIsCreatingCategory(true)
-            }}
-            className="w-full text-sm text-center py-1.5 rounded border border-dashed border-primary/50 text-primary hover:bg-primary/5 transition-colors font-medium"
-          >
-            + Nueva categoría
-          </button>
-        </div>
-      )}
+    <div className="rounded-md border bg-background p-3 space-y-2">
+      {/* Buscador + badge seleccionada */}
+      <div className="flex items-center gap-2">
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar categoría..."
+          className="h-8 text-sm"
+        />
+        {selectedCat && (
+          <span className="shrink-0 text-xs bg-primary/10 text-primary border border-primary/30 rounded px-2 py-0.5 font-medium">
+            {selectedCat.name}
+          </span>
+        )}
+      </div>
+
+      {/* Grid inline — no overflow clipping */}
+      <div className="grid grid-cols-4 gap-1.5 max-h-56 overflow-y-auto pr-1">
+        {filtered.length === 0 ? (
+          <p className="col-span-4 text-sm text-muted-foreground text-center py-3">Sin resultados</p>
+        ) : (
+          filtered.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => onChange(cat.id)}
+              className={cn(
+                'text-left text-sm px-2.5 py-1.5 rounded-md border transition-colors truncate w-full',
+                cat.id === value
+                  ? 'bg-primary/10 border-primary/40 text-primary font-semibold'
+                  : 'border-border hover:bg-accent hover:border-primary/30'
+              )}
+              title={cat.name}
+            >
+              {cat.name}
+            </button>
+          ))
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setIsCreatingCategory(true)}
+        className="w-full text-sm text-center py-1.5 rounded border border-dashed border-primary/50 text-primary hover:bg-primary/5 transition-colors font-medium"
+      >
+        + Nueva categoría
+      </button>
     </div>
   )
 }
@@ -652,7 +641,7 @@ export default function AdminCatalog() {
 
       {/* Product Form Modal */}
       <Dialog open={isProductModalOpen} onOpenChange={setIsProductModalOpen}>
-        <DialogContent className="max-w-4xl w-[95vw] max-h-[92vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl w-[96vw] max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
