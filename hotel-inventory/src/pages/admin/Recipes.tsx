@@ -45,7 +45,7 @@ import {
 } from '@/hooks/useRecipes'
 import { useProducts } from '@/hooks/useProducts'
 import { useCategories, useCreateProduct } from '@/hooks/useInventory'
-import { useSalesGrupos } from '@/hooks/useSalesData'
+import { useSalesGrupos, useSalesData } from '@/hooks/useSalesData'
 import { RecipeImportWizard } from '@/components/recipes/RecipeImportWizard'
 import { CasaSanzImportWizard } from '@/components/recipes/CasaSanzImportWizard'
 import { cn } from '@/lib/utils'
@@ -267,6 +267,16 @@ export default function Recipes() {
   const { data: products } = useProducts()
   const { data: categories } = useCategories()
   const { data: salesGrupos } = useSalesGrupos()
+  const { data: salesData } = useSalesData()
+
+  // Lookup: receta name (lowercase) → importe_unitario
+  const salesLookup = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const s of salesData || []) {
+      map.set(s.receta.toLowerCase(), s.importe_unitario)
+    }
+    return map
+  }, [salesData])
   const createRecipe = useCreateRecipe()
   const updateRecipe = useUpdateRecipe()
   const deleteRecipe = useDeleteRecipe()
@@ -557,6 +567,7 @@ export default function Recipes() {
               onToggle={() => setExpandedId(expandedId === recipe.id ? null : recipe.id)}
               onEdit={() => openEditDialog(recipe)}
               onDelete={() => setDeletingId(recipe.id)}
+              importeVenta={salesLookup.get(recipe.name.toLowerCase()) ?? null}
             />
           ))}
         </div>
@@ -1056,9 +1067,11 @@ interface RecipeRowProps {
   onToggle: () => void
   onEdit: () => void
   onDelete: () => void
+  importeVenta: number | null
 }
 
-function RecipeRow({ recipe, expanded, onToggle, onEdit, onDelete }: RecipeRowProps) {
+function RecipeRow({ recipe, expanded, onToggle, onEdit, onDelete, importeVenta }: RecipeRowProps) {
+  const importeNeto = importeVenta ? Math.round(importeVenta / 1.19) : null
   const ingredients = recipe.ingredients || []
   const portions = recipe.portions ?? 1
 
@@ -1102,13 +1115,23 @@ function RecipeRow({ recipe, expanded, onToggle, onEdit, onDelete }: RecipeRowPr
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
             <Badge variant="outline" className="text-xs">
               {ingredients.length} ingredientes
             </Badge>
             {hasCosts && (
               <Badge className="text-xs bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100">
-                ${formatNumber(productionValue)}
+                Costo ${formatNumber(productionValue)}
+              </Badge>
+            )}
+            {importeVenta && (
+              <Badge className="text-xs bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100">
+                Venta ${formatNumber(importeVenta)}
+              </Badge>
+            )}
+            {importeNeto && (
+              <Badge className="text-xs bg-violet-100 text-violet-800 border-violet-200 hover:bg-violet-100">
+                Neto ${formatNumber(importeNeto)}
               </Badge>
             )}
           </div>
@@ -1193,23 +1216,51 @@ function RecipeRow({ recipe, expanded, onToggle, onEdit, onDelete }: RecipeRowPr
                 </table>
 
                 {/* Footer summary */}
-                <div className="mt-3 grid grid-cols-3 gap-3 rounded-md bg-muted px-3 py-2">
+                <div className={`mt-3 grid gap-3 rounded-md bg-muted px-3 py-2 ${importeVenta ? 'grid-cols-5' : 'grid-cols-3'}`}>
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground">Porciones</p>
                     <p className="text-sm font-semibold">{portions}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xs text-muted-foreground">Valor producción</p>
+                    <p className="text-xs text-muted-foreground">Costo producción</p>
                     <p className="text-sm font-semibold">
                       {hasCosts ? `$${formatNumber(productionValue)}` : '—'}
                     </p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xs text-muted-foreground">Valor por porción</p>
+                    <p className="text-xs text-muted-foreground">Costo por porción</p>
                     <p className="text-sm font-semibold">
                       {hasCosts ? `$${formatNumber(valuePerPortion)}` : '—'}
                     </p>
                   </div>
+                  {importeVenta && (
+                    <>
+                      <div className="text-center border-l border-border/40">
+                        <p className="text-xs text-muted-foreground">Imp. Venta</p>
+                        <p className="text-sm font-semibold text-blue-700">${formatNumber(importeVenta)}</p>
+                        {importeNeto && (
+                          <>
+                            <p className="text-xs text-muted-foreground mt-1">Imp. Neto</p>
+                            <p className="text-sm font-semibold text-violet-700">${formatNumber(importeNeto)}</p>
+                          </>
+                        )}
+                      </div>
+                      <div className="text-center border-l border-border/40">
+                        <p className="text-xs text-muted-foreground">% Costo/Venta</p>
+                        <p className="text-sm font-semibold text-emerald-700">
+                          {hasCosts && importeNeto
+                            ? `${Math.round((valuePerPortion / importeNeto) * 100)}%`
+                            : '—'}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">Margen neto</p>
+                        <p className="text-sm font-semibold">
+                          {hasCosts && importeNeto
+                            ? `$${formatNumber(importeNeto - valuePerPortion)}`
+                            : '—'}
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Images */}
