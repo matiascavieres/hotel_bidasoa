@@ -79,7 +79,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('[AUTH] setTimeout ejecutado, llamando fetchProfile...')
           const userProfile = await fetchProfile(session.user.id)
           if (isMounted) {
-            console.log('[AUTH] setProfile:', userProfile ? 'OK' : 'NULL', 'setLoading(false)')
+            if (!userProfile) {
+              // El perfil no existe en la tabla users (usuario eliminado de la BD)
+              // Forzar cierre de sesión para limpiar la sesión cacheada
+              console.warn('[AUTH] fetchProfile retornó null → usuario sin perfil en BD, cerrando sesión...')
+              await supabase.auth.signOut({ scope: 'local' })
+              setSession(null)
+              setUser(null)
+              setProfile(null)
+              setLoading(false)
+              return
+            }
+            console.log('[AUTH] setProfile:', 'OK', 'setLoading(false)')
             setProfile(userProfile)
             setLoading(false)
           }

@@ -63,6 +63,17 @@ function ProtectedRoute({
     return <Navigate to="/login" replace />
   }
 
+  if (!profile) {
+    // Usuario autenticado en Supabase Auth pero sin perfil en la BD (fue eliminado)
+    // El AuthContext ya dispara el signOut; aquí solo mostramos spinner mientras procesa
+    console.log('[PROTECTED] → sin perfil en BD, mostrando spinner (signOut en proceso)')
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    )
+  }
+
   // Force password change on first login
   const decodedPath = decodeURIComponent(location.pathname)
   if (profile?.must_change_password && decodedPath !== '/cambiar-contraseña') {
