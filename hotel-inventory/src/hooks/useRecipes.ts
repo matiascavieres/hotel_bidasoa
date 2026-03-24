@@ -87,7 +87,8 @@ export function useCreateRecipe() {
       // 1. Create recipe
       const { data: recipe, error: recipeError } = await supabase
         .from('recipes')
-        .insert({ name, description: description || null, portions: portions ?? 1, grupo: grupo || null, comments: comments || null } as Record<string, unknown>)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .insert({ name, description: description || null, portions: portions ?? 1, grupo: grupo || null, comments: comments || null } as any)
         .select()
         .single()
 
