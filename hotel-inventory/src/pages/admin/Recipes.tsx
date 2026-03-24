@@ -937,7 +937,8 @@ function RecipeRow({ recipe, expanded, onToggle, onEdit, onDelete }: RecipeRowPr
                     <tr className="text-xs text-muted-foreground border-b">
                       <th className="text-left py-1.5 font-medium pr-4">Ingrediente</th>
                       <th className="text-right py-1.5 font-medium pr-4">Cantidad</th>
-                      <th className="text-right py-1.5 font-medium pr-4">Precio/kg</th>
+                      <th className="text-right py-1.5 font-medium pr-4">Precio/kg·lt</th>
+                      <th className="text-right py-1.5 font-medium pr-4">Precio/gr·ml</th>
                       <th className="text-right py-1.5 font-medium pr-4">Costo Total</th>
                       <th className="text-right py-1.5 font-medium">%</th>
                     </tr>
@@ -946,6 +947,9 @@ function RecipeRow({ recipe, expanded, onToggle, onEdit, onDelete }: RecipeRowPr
                     {ingredientsWithCost.map(({ ing, unit, cost }) => {
                       const pct =
                         productionValue > 0 ? Math.round((cost / productionValue) * 100) : 0
+                      // Precio por gr/ml = precio por kg/lt ÷ 1000
+                      const pricePerGrMl =
+                        ing.price_per_kg ? ing.price_per_kg / 1000 : null
                       return (
                         <tr key={ing.id} className="border-b border-border/40 hover:bg-muted/30">
                           <td className="py-1.5 pr-4 font-medium">
@@ -956,6 +960,11 @@ function RecipeRow({ recipe, expanded, onToggle, onEdit, onDelete }: RecipeRowPr
                           </td>
                           <td className="py-1.5 pr-4 text-right text-muted-foreground">
                             {ing.price_per_kg ? `$${formatNumber(ing.price_per_kg)}` : '—'}
+                          </td>
+                          <td className="py-1.5 pr-4 text-right text-muted-foreground">
+                            {pricePerGrMl
+                              ? `$${pricePerGrMl.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              : '—'}
                           </td>
                           <td className="py-1.5 pr-4 text-right font-medium">
                             {cost > 0 ? `$${formatNumber(cost)}` : '—'}
