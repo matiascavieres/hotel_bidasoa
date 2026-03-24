@@ -14,6 +14,7 @@ import {
   Check,
   ImageIcon,
   X,
+  Info,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -1231,51 +1232,101 @@ function RecipeRow({ recipe, expanded, onToggle, onEdit, onDelete, importeVenta 
                 </table>
 
                 {/* Footer summary */}
-                <div className={`mt-3 grid gap-3 rounded-md bg-muted px-3 py-2 ${importeVenta ? 'grid-cols-5' : 'grid-cols-3'}`}>
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">Porciones</p>
-                    <p className="text-sm font-semibold">{portions}</p>
+                <div className="mt-3 rounded-md bg-muted px-3 pt-2 pb-3">
+                  {/* header row with info button */}
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Resumen</p>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="text-muted-foreground hover:text-foreground transition-colors">
+                          <Info className="h-3.5 w-3.5" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent side="top" align="end" className="w-80 text-xs space-y-3 p-4">
+                        <p className="font-semibold text-sm">¿Cómo se calculan los valores?</p>
+                        <div className="space-y-2 text-muted-foreground leading-relaxed">
+                          <div>
+                            <span className="font-medium text-foreground">Costo producción</span>
+                            <p>Σ (cantidad × precio/kg) de cada ingrediente. Si la unidad es gr o ml, se divide la cantidad entre 1.000 antes de multiplicar por el precio por kg/lt.</p>
+                          </div>
+                          <div>
+                            <span className="font-medium text-foreground">Costo por porción</span>
+                            <p>Costo producción ÷ Porciones</p>
+                          </div>
+                          <div>
+                            <span className="font-medium text-foreground">Imp. Venta</span>
+                            <p>Precio de venta del reporte FNS (incluye IVA 19%). Se cruza automáticamente por nombre de receta.</p>
+                          </div>
+                          <div>
+                            <span className="font-medium text-foreground">Imp. Neto</span>
+                            <p>Imp. Venta ÷ 1,19 → precio sin IVA</p>
+                          </div>
+                          <div>
+                            <span className="font-medium text-foreground">% Costo / Venta</span>
+                            <p>(Costo por porción ÷ Imp. Neto) × 100 → qué porcentaje del precio neto representa el costo de ingredientes. Ideal: bajo 30-35%.</p>
+                          </div>
+                          <div>
+                            <span className="font-medium text-foreground">Margen neto</span>
+                            <p>Imp. Neto − Costo por porción → utilidad bruta por porción vendida (sin contar mano de obra ni costos fijos).</p>
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </div>
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">Costo producción</p>
-                    <p className="text-sm font-semibold">
-                      {hasCosts ? `$${formatNumber(productionValue)}` : '—'}
-                    </p>
+                  <div className={`grid gap-3 ${importeVenta ? 'grid-cols-5' : 'grid-cols-3'}`}>
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">Porciones</p>
+                      <p className="text-sm font-semibold">{portions}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">Costo producción</p>
+                      <p className="text-sm font-semibold">
+                        {hasCosts ? `$${formatNumber(productionValue)}` : '—'}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">Costo por porción</p>
+                      <p className="text-sm font-semibold">
+                        {hasCosts ? `$${formatNumber(valuePerPortion)}` : '—'}
+                      </p>
+                    </div>
+                    {importeVenta && (
+                      <>
+                        <div className="text-center border-l border-border/40">
+                          <p className="text-xs text-muted-foreground">Imp. Venta</p>
+                          <p className="text-sm font-semibold text-blue-700">${formatNumber(importeVenta)}</p>
+                          {importeNeto && (
+                            <>
+                              <p className="text-xs text-muted-foreground mt-1">Imp. Neto</p>
+                              <p className="text-sm font-semibold text-violet-700">${formatNumber(importeNeto)}</p>
+                            </>
+                          )}
+                        </div>
+                        <div className="text-center border-l border-border/40">
+                          <p className="text-xs text-muted-foreground">% Costo/Venta</p>
+                          <p className={`text-sm font-semibold ${
+                            hasCosts && importeNeto
+                              ? Math.round((valuePerPortion / importeNeto) * 100) <= 30
+                                ? 'text-emerald-700'
+                                : Math.round((valuePerPortion / importeNeto) * 100) <= 40
+                                  ? 'text-amber-600'
+                                  : 'text-red-600'
+                              : ''
+                          }`}>
+                            {hasCosts && importeNeto
+                              ? `${Math.round((valuePerPortion / importeNeto) * 100)}%`
+                              : '—'}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">Margen neto</p>
+                          <p className="text-sm font-semibold">
+                            {hasCosts && importeNeto
+                              ? `$${formatNumber(importeNeto - valuePerPortion)}`
+                              : '—'}
+                          </p>
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">Costo por porción</p>
-                    <p className="text-sm font-semibold">
-                      {hasCosts ? `$${formatNumber(valuePerPortion)}` : '—'}
-                    </p>
-                  </div>
-                  {importeVenta && (
-                    <>
-                      <div className="text-center border-l border-border/40">
-                        <p className="text-xs text-muted-foreground">Imp. Venta</p>
-                        <p className="text-sm font-semibold text-blue-700">${formatNumber(importeVenta)}</p>
-                        {importeNeto && (
-                          <>
-                            <p className="text-xs text-muted-foreground mt-1">Imp. Neto</p>
-                            <p className="text-sm font-semibold text-violet-700">${formatNumber(importeNeto)}</p>
-                          </>
-                        )}
-                      </div>
-                      <div className="text-center border-l border-border/40">
-                        <p className="text-xs text-muted-foreground">% Costo/Venta</p>
-                        <p className="text-sm font-semibold text-emerald-700">
-                          {hasCosts && importeNeto
-                            ? `${Math.round((valuePerPortion / importeNeto) * 100)}%`
-                            : '—'}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">Margen neto</p>
-                        <p className="text-sm font-semibold">
-                          {hasCosts && importeNeto
-                            ? `$${formatNumber(importeNeto - valuePerPortion)}`
-                            : '—'}
-                        </p>
-                      </div>
-                    </>
-                  )}
                 </div>
 
                 {/* Images */}
