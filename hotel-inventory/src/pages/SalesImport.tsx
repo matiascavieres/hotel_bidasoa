@@ -133,7 +133,7 @@ export default function SalesImport() {
 
     setIsParsingFile(true)
     try {
-      const allRows: { receta: string; cantidad: number; grupo: string; familia: string; puntoDeVenta: string }[] = []
+      const allRows: { receta: string; cantidad: number; importeUnitario: number; grupo: string; familia: string; puntoDeVenta: string }[] = []
       let inferredFrom = ''
       let inferredTo   = ''
 

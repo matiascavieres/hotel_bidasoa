@@ -759,6 +759,19 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      upsert_sales_monthly_record: {
+        Args: {
+          p_receta: string
+          p_grupo: string
+          p_familia: string
+          p_year: number
+          p_month: number
+          p_cantidad: number
+          p_importe_unitario: number
+          p_location: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       user_role: 'admin' | 'bodeguero' | 'bartender'

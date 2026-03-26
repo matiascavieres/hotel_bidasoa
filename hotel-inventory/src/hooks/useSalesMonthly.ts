@@ -189,7 +189,6 @@ export const VINOS_GRUPOS = [
   'Pinot Noir', 'Por Copas', 'Rose', 'Sauvignon Blanc',
 ]
 
-const BAR_GRUPOS_SET   = new Set(BAR_GRUPOS.map(g => g.toLowerCase()))
 const VINOS_GRUPOS_SET = new Set(VINOS_GRUPOS.map(g => g.toLowerCase()))
 
 // ── Familia totals (for KPI breakdown) ────────────────────────────────────────
