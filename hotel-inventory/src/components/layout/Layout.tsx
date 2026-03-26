@@ -22,7 +22,7 @@ export function Layout() {
       {/* Main content area */}
       <div
         className={cn(
-          'flex min-h-screen w-full min-w-0 flex-col transition-all duration-300',
+          'flex min-h-screen flex-col transition-all duration-300',
           sidebarCollapsed ? 'md:ml-16' : 'md:ml-64'
         )}
       >
