@@ -125,7 +125,7 @@ export function ProductSelector({ onAddToCart }: ProductSelectorProps) {
             return (
               <div
                 key={product.id}
-                className={`flex items-center justify-between rounded-md p-2 transition-colors ${
+                className={`flex w-full min-w-0 items-center justify-between rounded-md p-2 transition-colors ${
                   !hasStock
                     ? 'opacity-50 cursor-not-allowed'
                     : isSelected
