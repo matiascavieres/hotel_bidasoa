@@ -39,9 +39,16 @@ export function ProductSelector({ onAddToCart }: ProductSelectorProps) {
     return map
   }, [bodegaInventory])
 
+  const sortedCategories = useMemo(() => {
+    return [...(categories || [])].sort((a, b) => a.name.localeCompare(b.name, 'es'))
+  }, [categories])
+
   const filteredProducts = products?.filter((product) => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.code.toLowerCase().includes(searchQuery.toLowerCase())
+    const q = searchQuery.toLowerCase()
+    const matchesSearch = !q ||
+      product.name.toLowerCase().includes(q) ||
+      product.code.toLowerCase().includes(q) ||
+      (product.category?.name ?? '').toLowerCase().includes(q)
     const matchesCategory = selectedCategory === 'all' || product.category_id === selectedCategory
     return matchesSearch && matchesCategory
   }) || []
@@ -99,7 +106,7 @@ export function ProductSelector({ onAddToCart }: ProductSelectorProps) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas</SelectItem>
-            {categories?.map((cat) => (
+            {sortedCategories.map((cat) => (
               <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
             ))}
           </SelectContent>
@@ -148,7 +155,7 @@ export function ProductSelector({ onAddToCart }: ProductSelectorProps) {
                     </Badge>
                   </div>
                 </div>
-                <div className="ml-2 flex flex-col items-end gap-1 shrink-0 max-w-[80px]">
+                <div className="ml-2 flex flex-col items-end gap-1 shrink-0">
                   {product.format_ml && (
                     <span className="text-xs opacity-70">{product.format_ml}ml</span>
                   )}
