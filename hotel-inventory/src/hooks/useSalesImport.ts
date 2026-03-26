@@ -173,40 +173,47 @@ export function useProcessSalesImport() {
       importedBy,
       totalRows,
       salesRows,
+      deductStock = true,
     }: {
       preview: SalesImportPreview
       filename: string
       importDate: string
       importedBy: string
       totalRows: number
-      /** Original parsed sales rows (receta, grupo, familia, cantidad) from the FNS file */
+      /** Original parsed sales rows from the FNS file */
       salesRows?: {
         receta: string
         cantidad: number
+        importeUnitario: number
         grupo: string
         familia: string
+        location: string
       }[]
+      /** Whether to deduct stock from bar inventory (default true). Set false for analytics-only import. */
+      deductStock?: boolean
     }) => {
       const { matched, unmatched, stockChanges } = preview
 
-      // 1. Deduct stock for each product-location combination
-      for (const change of stockChanges) {
-        // Get current inventory
-        const { data: current } = await supabase
-          .from('inventory')
-          .select('id, quantity_ml')
-          .eq('product_id', change.product_id)
-          .eq('location', change.location)
-          .single()
-
-        if (current) {
-          const newQty = Math.max(0, current.quantity_ml - change.totalMlToDeduct)
-          await supabase
+      // 1. Deduct stock for each product-location combination (only if requested)
+      if (deductStock) {
+        for (const change of stockChanges) {
+          // Get current inventory
+          const { data: current } = await supabase
             .from('inventory')
-            .update({ quantity_ml: newQty })
-            .eq('id', current.id)
+            .select('id, quantity_ml')
+            .eq('product_id', change.product_id)
+            .eq('location', change.location)
+            .single()
+
+          if (current) {
+            const newQty = Math.max(0, current.quantity_ml - change.totalMlToDeduct)
+            await supabase
+              .from('inventory')
+              .update({ quantity_ml: newQty })
+              .eq('id', current.id)
+          }
+          // If no inventory record exists, skip (can't deduct from nothing)
         }
-        // If no inventory record exists, skip (can't deduct from nothing)
       }
 
       // 2. Create sales_imports record
@@ -241,36 +248,34 @@ export function useProcessSalesImport() {
 
       // 3. Populate sales_monthly for analytics
       if (salesRows && salesRows.length > 0 && importDate) {
-        const d = new Date(importDate)
-        const year  = d.getFullYear()
-        const month = d.getMonth() + 1
+        // Parse year/month directly from the string to avoid timezone issues
+        // e.g. "2026-02-01" → year=2026, month=2 (not affected by UTC offset)
+        const [yearStr, monthStr] = importDate.split('-')
+        const year  = parseInt(yearStr,  10)
+        const month = parseInt(monthStr, 10)
 
-        // Look up importe_unitario from sales_data by recipe name
-        const { data: priceData } = await supabase
-          .from('sales_data')
-          .select('receta, importe_unitario')
-
-        const priceMap = new Map<string, number>()
-        if (priceData) {
-          for (const p of priceData as { receta: string; importe_unitario: number }[]) {
-            priceMap.set(p.receta.toLowerCase().trim(), p.importe_unitario)
-          }
-        }
-
-        // Aggregate salesRows by receta (some recipes may appear multiple times)
-        const recetaMap = new Map<string, { receta: string; grupo: string; familia: string; cantidad: number }>()
+        // Aggregate salesRows by (receta, location)
+        const recetaMap = new Map<string, {
+          receta: string; grupo: string; familia: string
+          cantidad: number; importeUnitario: number; location: string
+        }>()
         for (const row of salesRows) {
-          const key = row.receta.toLowerCase().trim()
+          const key = `${row.receta.toLowerCase().trim()}::${row.location}`
           const existing = recetaMap.get(key)
           if (existing) {
             existing.cantidad += row.cantidad
+            if (!existing.importeUnitario && row.importeUnitario) {
+              existing.importeUnitario = row.importeUnitario
+            }
           } else {
-            recetaMap.set(key, { receta: row.receta, grupo: row.grupo, familia: row.familia, cantidad: row.cantidad })
+            recetaMap.set(key, {
+              receta: row.receta, grupo: row.grupo, familia: row.familia,
+              cantidad: row.cantidad, importeUnitario: row.importeUnitario, location: row.location,
+            })
           }
         }
 
         for (const row of recetaMap.values()) {
-          const importeUnitario = priceMap.get(row.receta.toLowerCase().trim()) ?? 0
           try {
             await upsertSalesMonthlyRecord({
               receta:           row.receta,
@@ -279,7 +284,8 @@ export function useProcessSalesImport() {
               year,
               month,
               cantidad:         Math.round(row.cantidad),
-              importe_unitario: importeUnitario,
+              importe_unitario: Math.round(row.importeUnitario),
+              location:         row.location,
             })
           } catch {
             // Non-critical – continue even if individual upsert fails

@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { MultiSelect } from '@/components/ui/multi-select'
+import { DatePickerButton, MonthPickerButton } from '@/components/ui/date-picker'
 import { SalesPieChart } from '@/components/sales/SalesPieChart'
 import { SalesFamiliaChart } from '@/components/sales/SalesFamiliaChart'
 import {
@@ -22,7 +23,7 @@ import {
   VINOS_GRUPOS,
 } from '@/hooks/useSalesMonthly'
 import { useToast } from '@/hooks/use-toast'
-import type { FamiliaPreset, SalesData } from '@/types'
+import type { FamiliaPreset, SalesData, SalesLocationFilter } from '@/types'
 import type { SalesMonthlyAgg } from '@/hooks/useSalesMonthly'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -148,12 +149,21 @@ export default function SalesAnalysis() {
   // ── Filters ──────────────────────────────────────────────────────────────────
   const [fromMonth,       setFromMonth]       = useState(prevMonth)
   const [toMonth,         setToMonth]         = useState(prevMonth)
+  type DateMode = 'month' | 'day'
+  const [dateMode,        setDateMode]        = useState<DateMode>('month')
+  const [fromDay,         setFromDay]         = useState('')   // 'YYYY-MM-DD'
+  const [toDay,           setToDay]           = useState('')   // 'YYYY-MM-DD'
+  const [locationFilter,  setLocationFilter]  = useState<SalesLocationFilter>('')
   const [familiaPreset,   setFamiliaPreset]   = useState<FamiliaPreset>('all')
   const [selectedGrupos,  setSelectedGrupos]  = useState<string[]>([])
   const [searchQuery,     setSearchQuery]     = useState('')
   const [hoveredKPI,      setHoveredKPI]      = useState<HoveredKPI>(null)
   const [sortCol,         setSortCol]         = useState<SortCol>('importe_total')
   const [sortDir,         setSortDir]         = useState<'asc' | 'desc'>('desc')
+
+  // Derive effective month range from date mode
+  const effectiveFromMonth = dateMode === 'day' && fromDay ? fromDay.slice(0, 7) : fromMonth
+  const effectiveToMonth   = dateMode === 'day' && toDay   ? toDay.slice(0, 7)   : toMonth
 
   // ── Inline edit ──────────────────────────────────────────────────────────────
   const [editState, setEditState] = useState<EditState | null>(null)
@@ -179,15 +189,16 @@ export default function SalesAnalysis() {
 
   // ── Data ─────────────────────────────────────────────────────────────────────
   const { data: salesData, isLoading } = useSalesMonthly({
-    fromMonth,
-    toMonth,
+    fromMonth:   effectiveFromMonth,
+    toMonth:     effectiveToMonth,
     familiaFilter,
     grupos:      effectiveGrupos,
     searchQuery: searchQuery || undefined,
+    location:    locationFilter || undefined,
   })
 
-  const { data: grupos } = useSalesMonthlyGrupos(fromMonth, toMonth)
-  const { data: totals } = useSalesMonthlyTotals(fromMonth, toMonth)
+  const { data: grupos } = useSalesMonthlyGrupos(effectiveFromMonth, effectiveToMonth, locationFilter || undefined)
+  const { data: totals } = useSalesMonthlyTotals(effectiveFromMonth, effectiveToMonth, locationFilter || undefined)
 
   const data = salesData ?? []
 
@@ -298,11 +309,15 @@ export default function SalesAnalysis() {
   }, [data, sortCol, sortDir, chartData.grupoTotals])
 
   // ── Handlers ──────────────────────────────────────────────────────────────────
-  const hasFilters = selectedGrupos.length > 0 || searchQuery || familiaPreset !== 'all'
+  const hasFilters = selectedGrupos.length > 0 || searchQuery || familiaPreset !== 'all' || locationFilter !== ''
 
   const handleResetMonth = () => {
     setFromMonth(prevMonth)
     setToMonth(prevMonth)
+    setDateMode('month')
+    setFromDay('')
+    setToDay('')
+    setLocationFilter('')
     setFamiliaPreset('all')
     setSelectedGrupos([])
     setSearchQuery('')
@@ -322,7 +337,7 @@ export default function SalesAnalysis() {
   }
 
   // Inline editing
-  const isSingleMonth = fromMonth === toMonth
+  const isSingleMonth = effectiveFromMonth === effectiveToMonth
 
   const startEdit = (id: string, field: EditState['field'], value: number) => {
     setEditState({ id, field, value: String(value) })
@@ -398,7 +413,7 @@ export default function SalesAnalysis() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `ventas_${fromMonth}_${toMonth}_${new Date().toISOString().slice(0, 10)}.csv`
+    link.download = `ventas_${effectiveFromMonth}_${effectiveToMonth}_${new Date().toISOString().slice(0, 10)}.csv`
     link.click()
     URL.revokeObjectURL(url)
     toast({ title: 'Exportado', description: `${data.length} registros exportados.` })
@@ -414,31 +429,86 @@ export default function SalesAnalysis() {
           <h1 className="text-2xl font-bold shrink-0">Ventas</h1>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* Date range */}
-            <div className="flex items-center gap-1.5">
-              <Label className="text-xs text-muted-foreground whitespace-nowrap">Desde</Label>
-              <Input
-                type="month"
-                value={fromMonth}
-                onChange={e => {
-                  setFromMonth(e.target.value)
-                  if (e.target.value > toMonth) setToMonth(e.target.value)
-                }}
-                className="h-9 w-[140px] text-sm"
-              />
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Label className="text-xs text-muted-foreground whitespace-nowrap">Hasta</Label>
-              <Input
-                type="month"
-                value={toMonth}
-                min={fromMonth}
-                onChange={e => setToMonth(e.target.value)}
-                className="h-9 w-[140px] text-sm"
-              />
+
+            {/* Location toggle */}
+            <div className="flex rounded-md border divide-x overflow-hidden shrink-0">
+              {([
+                ['', 'Todos'],
+                ['bar_casa_sanz', 'Casa Sanz'],
+                ['bar_hotel_bidasoa', 'Bidasoa'],
+              ] as [SalesLocationFilter, string][]).map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => setLocationFilter(val)}
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
+                    locationFilter === val ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
 
-            {/* Reset to last month */}
+            {/* Date mode toggle */}
+            <div className="flex rounded-md border divide-x overflow-hidden shrink-0">
+              <button
+                onClick={() => setDateMode('month')}
+                className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                  dateMode === 'month' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                }`}
+              >
+                Por mes
+              </button>
+              <button
+                onClick={() => setDateMode('day')}
+                className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                  dateMode === 'day' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                }`}
+              >
+                Por día
+              </button>
+            </div>
+
+            {/* Date range pickers */}
+            {dateMode === 'month' ? (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Desde</Label>
+                  <MonthPickerButton
+                    value={fromMonth}
+                    onChange={v => { setFromMonth(v); if (v > toMonth) setToMonth(v) }}
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Hasta</Label>
+                  <MonthPickerButton
+                    value={toMonth}
+                    onChange={setToMonth}
+                    min={fromMonth}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Desde</Label>
+                  <DatePickerButton
+                    value={fromDay}
+                    onChange={v => { setFromDay(v); if (toDay && v > toDay) setToDay(v) }}
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Hasta</Label>
+                  <DatePickerButton
+                    value={toDay}
+                    onChange={setToDay}
+                    min={fromDay}
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Reset */}
             <Button
               variant="outline"
               size="sm"
@@ -643,9 +713,9 @@ export default function SalesAnalysis() {
         )}
 
         <span className="text-xs text-muted-foreground ml-auto">
-          {fromMonth === toMonth
-            ? formatMonthLabel(fromMonth)
-            : `${formatMonthLabel(fromMonth)} – ${formatMonthLabel(toMonth)}`}
+          {effectiveFromMonth === effectiveToMonth
+            ? formatMonthLabel(effectiveFromMonth)
+            : `${formatMonthLabel(effectiveFromMonth)} – ${formatMonthLabel(effectiveToMonth)}`}
         </span>
       </div>
 
