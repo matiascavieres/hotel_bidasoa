@@ -80,17 +80,17 @@ export function Header({ sidebarCollapsed, onToggleSidebar }: HeaderProps) {
         <NotificationBell />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-2">
-              <Avatar className="h-8 w-8">
+            <Button variant="ghost" className="flex items-center gap-2 max-w-[200px]">
+              <Avatar className="h-8 w-8 shrink-0">
                 <AvatarFallback>
                   {profile ? getInitials(profile.full_name) : 'U'}
                 </AvatarFallback>
               </Avatar>
-              <div className="hidden flex-col items-start text-left md:flex">
-                <span className="text-sm font-medium">
+              <div className="hidden min-w-0 flex-col items-start text-left md:flex">
+                <span className="text-sm font-medium truncate max-w-[120px]">
                   {profile?.full_name || 'Usuario'}
                 </span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground truncate max-w-[120px]">
                   {profile?.role ? ROLE_NAMES[profile.role] : ''}
                 </span>
               </div>
