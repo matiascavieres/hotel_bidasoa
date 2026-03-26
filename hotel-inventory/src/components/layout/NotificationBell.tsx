@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Bell,
   Package,
@@ -18,6 +20,22 @@ import {
 } from '@/components/ui/popover'
 import { useRealtimeNotifications, type Notification } from '@/hooks/useNotifications'
 import { cn } from '@/lib/utils'
+
+const ACTION_ROUTES: Record<string, string> = {
+  request_created:   '/solicitudes',
+  request_approved:  '/solicitudes',
+  request_rejected:  '/solicitudes',
+  request_delivered: '/solicitudes',
+  transfer_created:  '/traspasos',
+  transfer_completed:'/traspasos',
+  stock_adjustment:  '/stock',
+  inbound_received:  '/inbound',
+  sales_import:      '/ventas',
+  product_created:   '/admin/catalogo',
+  product_updated:   '/admin/catalogo',
+  user_created:      '/admin/usuarios',
+  user_updated:      '/admin/usuarios',
+}
 
 function getIcon(action: string) {
   switch (action) {
@@ -66,12 +84,25 @@ function getIconColor(action: string) {
   }
 }
 
-function NotificationItem({ notification }: { notification: Notification }) {
+function NotificationItem({
+  notification,
+  onNavigate,
+}: {
+  notification: Notification
+  onNavigate: (route: string) => void
+}) {
   const Icon = getIcon(notification.action)
   const iconColor = getIconColor(notification.action)
+  const route = ACTION_ROUTES[notification.action]
 
   return (
-    <div className="flex items-start gap-3 p-3 hover:bg-accent/50 transition-colors">
+    <div
+      className={cn(
+        'flex items-start gap-3 p-3 transition-colors',
+        route ? 'cursor-pointer hover:bg-accent/50' : 'hover:bg-accent/30',
+      )}
+      onClick={() => route && onNavigate(route)}
+    >
       <div className={cn('mt-0.5 shrink-0', iconColor)}>
         <Icon className="h-4 w-4" />
       </div>
@@ -85,9 +116,17 @@ function NotificationItem({ notification }: { notification: Notification }) {
 
 export function NotificationBell() {
   const { notifications, unreadCount, markAllRead } = useRealtimeNotifications()
+  const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
+
+  function handleNavigate(route: string) {
+    setOpen(false)
+    markAllRead()
+    navigate(route)
+  }
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
@@ -126,6 +165,7 @@ export function NotificationBell() {
                 <NotificationItem
                   key={notification.id}
                   notification={notification}
+                  onNavigate={handleNavigate}
                 />
               ))}
             </div>
