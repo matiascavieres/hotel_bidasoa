@@ -123,8 +123,8 @@ export function ProductSelector({ onAddToCart }: ProductSelectorProps) {
       </div>
 
       {/* Product list */}
-      <div className="h-[300px] overflow-y-auto overflow-x-hidden rounded-md border">
-        <div className="p-2">
+      <div className="h-[300px] overflow-y-auto rounded-md border">
+        <div className="p-1">
           {filteredProducts.map((product) => {
             const { stockMl, bottles, hasStock } = getStockInfo(product)
             const isSelected = selectedProduct?.id === product.id
@@ -132,7 +132,7 @@ export function ProductSelector({ onAddToCart }: ProductSelectorProps) {
             return (
               <div
                 key={product.id}
-                className={`flex w-full min-w-0 items-center justify-between rounded-md p-2 transition-colors ${
+                className={`flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors ${
                   !hasStock
                     ? 'opacity-50 cursor-not-allowed'
                     : isSelected
@@ -144,27 +144,19 @@ export function ProductSelector({ onAddToCart }: ProductSelectorProps) {
                 }}
               >
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium truncate">{product.name}</p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs opacity-70">{product.code}</span>
-                    <Badge
-                      variant={isSelected ? 'secondary' : 'outline'}
-                      className="text-xs"
-                    >
-                      {product.category?.name || 'Sin categoria'}
-                    </Badge>
-                  </div>
+                  <p className="text-sm font-medium truncate">{product.name}</p>
+                  <p className="text-xs opacity-70 truncate">
+                    {product.category?.name || 'Sin categoria'}
+                    {product.format_ml ? ` · ${product.format_ml}ml` : ''}
+                  </p>
                 </div>
-                <div className="ml-2 flex flex-col items-end gap-1 shrink-0">
-                  {product.format_ml && (
-                    <span className="text-xs opacity-70">{product.format_ml}ml</span>
-                  )}
+                <div className="shrink-0">
                   {hasStock ? (
-                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 whitespace-nowrap">
                       {bottles > 0 ? `${bottles} bot.` : `${stockMl}ml`}
                     </Badge>
                   ) : (
-                    <Badge variant="destructive" className="text-xs">
+                    <Badge variant="destructive" className="text-xs whitespace-nowrap">
                       Sin stock
                     </Badge>
                   )}
