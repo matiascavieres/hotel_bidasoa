@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Session, User as AuthUser } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import type { User } from '@/types'
@@ -20,6 +20,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [profile, setProfile] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  // Track whether profile has been loaded at least once — avoids spinner on token renewals
+  const profileLoadedRef = useRef(false)
 
   const fetchProfile = async (userId: string): Promise<User | null> => {
     console.log('[AUTH] fetchProfile llamado para userId:', userId)
@@ -67,9 +69,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null)
 
       if (session?.user) {
-        // Marcar como loading hasta que el perfil se cargue
-        setLoading(true)
-        console.log('[AUTH] loading=true, iniciando fetchProfile via setTimeout...')
+        // Only show spinner on first load — not on token renewals or tab re-focus
+        if (!profileLoadedRef.current) {
+          setLoading(true)
+          console.log('[AUTH] loading=true (perfil no cargado aún), iniciando fetchProfile...')
+        } else {
+          console.log('[AUTH] token renovado, actualizando perfil en background (sin spinner)...')
+        }
         // Usar setTimeout para evitar bloqueo de Supabase auth
         setTimeout(async () => {
           if (!isMounted) {
@@ -81,8 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (isMounted) {
             if (!userProfile) {
               // El perfil no existe en la tabla users (usuario eliminado de la BD)
-              // Forzar cierre de sesión para limpiar la sesión cacheada
               console.warn('[AUTH] fetchProfile retornó null → usuario sin perfil en BD, cerrando sesión...')
+              profileLoadedRef.current = false
               await supabase.auth.signOut({ scope: 'local' })
               setSession(null)
               setUser(null)
@@ -91,12 +97,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               return
             }
             console.log('[AUTH] setProfile:', 'OK', 'setLoading(false)')
+            profileLoadedRef.current = true
             setProfile(userProfile)
             setLoading(false)
           }
         }, 0)
       } else {
         console.log('[AUTH] No hay sesion, limpiando estado')
+        profileLoadedRef.current = false
         setProfile(null)
         setLoading(false)
       }

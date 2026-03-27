@@ -1,6 +1,22 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import type { Recipe } from '@/types'
+import type { Recipe, RecipeUnit } from '@/types'
+
+const RECIPE_IMAGES_BUCKET = 'product-images'
+
+async function uploadRecipeImages(recipeId: string, files: File[]): Promise<string[]> {
+  const paths: string[] = []
+  for (const file of files) {
+    const ext = file.name.split('.').pop() || 'jpg'
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${ext}`
+    const filePath = `recipes/${recipeId}/${fileName}`
+    const { error } = await supabase.storage
+      .from(RECIPE_IMAGES_BUCKET)
+      .upload(filePath, file, { contentType: file.type })
+    if (!error) paths.push(filePath)
+  }
+  return paths
+}
 
 export function useRecipes() {
   return useQuery({
@@ -54,22 +70,39 @@ export function useCreateRecipe() {
     mutationFn: async ({
       name,
       description,
+      portions,
+      grupo,
+      comments,
       ingredients,
+      imageFiles,
     }: {
       name: string
       description?: string
-      ingredients: { product_id: string; quantity_ml: number; notes?: string }[]
+      portions?: number
+      grupo?: string
+      comments?: string
+      ingredients: { product_id: string; quantity_ml: number; unit: RecipeUnit; price_per_kg?: number; notes?: string }[]
+      imageFiles?: File[]
     }) => {
       // 1. Create recipe
       const { data: recipe, error: recipeError } = await supabase
         .from('recipes')
-        .insert({ name, description: description || null })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .insert({ name, description: description || null, portions: portions ?? 1, grupo: grupo || null, comments: comments || null } as any)
         .select()
         .single()
 
       if (recipeError) throw recipeError
 
-      // 2. Create ingredients
+      // 2. Upload images
+      if (imageFiles && imageFiles.length > 0) {
+        const imagePaths = await uploadRecipeImages(recipe.id, imageFiles)
+        if (imagePaths.length > 0) {
+          await supabase.from('recipes').update({ image_urls: imagePaths } as Record<string, unknown>).eq('id', recipe.id)
+        }
+      }
+
+      // 3. Create ingredients
       if (ingredients.length > 0) {
         const { error: ingredientsError } = await supabase
           .from('recipe_ingredients')
@@ -78,6 +111,8 @@ export function useCreateRecipe() {
               recipe_id: recipe.id,
               product_id: ing.product_id,
               quantity_ml: ing.quantity_ml,
+              unit: ing.unit,
+              price_per_kg: ing.price_per_kg ?? null,
               notes: ing.notes || null,
             }))
           )
@@ -101,22 +136,45 @@ export function useUpdateRecipe() {
       id,
       name,
       description,
+      portions,
+      grupo,
+      comments,
       ingredients,
+      imageFiles,
+      existingImagePaths,
     }: {
       id: string
       name: string
       description?: string | null
-      ingredients: { product_id: string; quantity_ml: number; notes?: string }[]
+      portions?: number
+      grupo?: string | null
+      comments?: string | null
+      ingredients: { product_id: string; quantity_ml: number; unit: RecipeUnit; price_per_kg?: number; notes?: string }[]
+      imageFiles?: File[]
+      existingImagePaths?: string[]
     }) => {
-      // 1. Update recipe metadata
+      // 1. Upload new images and merge with existing
+      const newPaths = imageFiles && imageFiles.length > 0
+        ? await uploadRecipeImages(id, imageFiles)
+        : []
+      const allImagePaths = [...(existingImagePaths || []), ...newPaths]
+
+      // 2. Update recipe metadata + image_urls
       const { error: recipeError } = await supabase
         .from('recipes')
-        .update({ name, description: description || null })
+        .update({
+          name,
+          description: description || null,
+          portions: portions ?? 1,
+          grupo: grupo || null,
+          comments: comments || null,
+          image_urls: allImagePaths,
+        } as Record<string, unknown>)
         .eq('id', id)
 
       if (recipeError) throw recipeError
 
-      // 2. Delete existing ingredients
+      // 3. Delete existing ingredients
       const { error: deleteError } = await supabase
         .from('recipe_ingredients')
         .delete()
@@ -124,7 +182,7 @@ export function useUpdateRecipe() {
 
       if (deleteError) throw deleteError
 
-      // 3. Re-insert ingredients
+      // 4. Re-insert ingredients
       if (ingredients.length > 0) {
         const { error: insertError } = await supabase
           .from('recipe_ingredients')
@@ -133,6 +191,8 @@ export function useUpdateRecipe() {
               recipe_id: id,
               product_id: ing.product_id,
               quantity_ml: ing.quantity_ml,
+              unit: ing.unit,
+              price_per_kg: ing.price_per_kg ?? null,
               notes: ing.notes || null,
             }))
           )
@@ -167,7 +227,7 @@ export function useDeleteRecipe() {
 
 /**
  * Bulk create multiple recipes with their ingredients.
- * Used by the CSV import wizard.
+ * Used by the CSV/XLSX import wizards.
  */
 export function useBulkCreateRecipes() {
   const queryClient = useQueryClient()
@@ -176,7 +236,9 @@ export function useBulkCreateRecipes() {
     mutationFn: async (
       recipesToCreate: {
         name: string
-        ingredients: { product_id: string; quantity_ml: number; notes?: string }[]
+        portions?: number
+        grupo?: string
+        ingredients: { product_id: string; quantity_ml: number; unit: RecipeUnit; price_per_kg?: number; notes?: string }[]
       }[]
     ) => {
       const results: { created: number; errors: string[] } = {
@@ -186,10 +248,9 @@ export function useBulkCreateRecipes() {
 
       for (const recipeData of recipesToCreate) {
         try {
-          // Create recipe
           const { data: recipe, error: recipeError } = await supabase
             .from('recipes')
-            .insert({ name: recipeData.name })
+            .insert({ name: recipeData.name, portions: recipeData.portions ?? 1, grupo: recipeData.grupo || null })
             .select()
             .single()
 
@@ -198,7 +259,6 @@ export function useBulkCreateRecipes() {
             continue
           }
 
-          // Create ingredients
           const validIngredients = recipeData.ingredients.filter(
             (i) => i.product_id && i.quantity_ml > 0
           )
@@ -211,6 +271,8 @@ export function useBulkCreateRecipes() {
                   recipe_id: recipe.id,
                   product_id: ing.product_id,
                   quantity_ml: ing.quantity_ml,
+                  unit: ing.unit,
+                  price_per_kg: ing.price_per_kg ?? null,
                   notes: ing.notes || null,
                 }))
               )
@@ -221,7 +283,7 @@ export function useBulkCreateRecipes() {
           }
 
           results.created++
-        } catch (err) {
+        } catch {
           results.errors.push(`${recipeData.name}: Error inesperado`)
         }
       }
