@@ -229,7 +229,7 @@ export default function SalesAnalysis() {
     const grupoImporte = Array.from(grupoMap.entries())
       .map(([name, imp]) => ({ name, value: Math.round(imp / 1.19), importe: imp }))
       .sort((a, b) => b.importe - a.importe)
-      .slice(0, 8)
+      .slice(0, 16)
 
     // Top 10 by importe_total
     const top10 = [...data]
@@ -642,8 +642,8 @@ export default function SalesAnalysis() {
         </Card>
 
         <Card>
-          <CardContent className="px-4 pt-4 pb-4 flex flex-col gap-4">
-            <div>
+          <CardContent className="px-4 pt-4 pb-4 flex flex-col gap-0">
+            <div className="pb-3">
               <p className="text-base font-semibold mb-2">
                 Por Familia
                 <span className="text-muted-foreground font-normal text-xs ml-2">(unidades)</span>
@@ -655,21 +655,23 @@ export default function SalesAnalysis() {
                 tooltipData={chartData.familiaTop5Map}
               />
             </div>
-            <div className="border-t pt-4">
+            <div className="border-t pt-3">
               <p className="text-base font-semibold mb-2">
                 Top Grupos por Importe
                 <span className="text-xs text-muted-foreground font-normal ml-2">
                   ({chartData.grupoImporte.length} de {chartData.totalGrupos})
                 </span>
               </p>
-              <SalesFamiliaChart
-                data={chartData.grupoImporte}
-                maxValue={chartData.maxGrupo}
-                showImporte={false}
-                showBoth={true}
-                totalValue={chartData.allGruposNetoTotal}
-                tooltipData={chartData.grupoTop5Map}
-              />
+              <div className="max-h-80 overflow-y-auto pr-1">
+                <SalesFamiliaChart
+                  data={chartData.grupoImporte}
+                  maxValue={chartData.maxGrupo}
+                  showImporte={false}
+                  showBoth={true}
+                  totalValue={chartData.allGruposNetoTotal}
+                  tooltipData={chartData.grupoTop5Map}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
