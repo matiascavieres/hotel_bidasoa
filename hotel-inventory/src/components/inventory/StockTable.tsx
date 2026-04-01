@@ -353,10 +353,13 @@ export function StockTable({
                     return (
                       <tr key={product.id} className="group border-b hover:bg-muted/30">
                         <td className="px-2 py-2">
-                          <div className="flex items-center gap-2 min-w-0">
+                          <div
+                            className="flex items-center gap-2 min-w-0 cursor-pointer"
+                            onClick={() => setEditingProduct(product)}
+                          >
                             <ProductThumbnail imagePath={product.image_url} size={32} />
                             <div className="min-w-0">
-                              <p className="font-medium truncate">{product.name}</p>
+                              <p className="font-medium truncate hover:underline">{product.name}</p>
                               <p className="text-sm text-muted-foreground truncate">
                                 {product.code} • {product.format_ml}ml
                               </p>
