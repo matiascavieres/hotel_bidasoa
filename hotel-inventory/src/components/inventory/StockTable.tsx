@@ -77,6 +77,22 @@ type StockSortField = 'name' | 'category' | 'quantity_ml' | 'status'
 type SortDirection = 'asc' | 'desc'
 type ViewMode = 'list' | 'grid'
 
+// Destilados/licores vendidos por porción en el bar (75ml = 1 porción)
+const PORCION_ML = 75
+const SPIRIT_KEYWORDS = [
+  'gin', 'vodka', 'tequila', 'ron', 'rum', 'whisky', 'whiskey',
+  'mezcal', 'brandy', 'cognac', 'pisco', 'grappa', 'amaretto',
+  'licor', 'aperitivo', 'bourbon', 'scotch', 'destilado', 'aguardiente',
+  'vermouth', 'bitter', 'fernet', 'absenta', 'triple sec', 'cointreau',
+  'kahlua', 'baileys', 'sambuca',
+]
+
+function usesPorcion(category: string, location: LocationType): boolean {
+  if (location === 'bodega') return false
+  const lc = category.toLowerCase()
+  return SPIRIT_KEYWORDS.some(k => lc.includes(k))
+}
+
 const getEstado = (product: EditingProduct): string => {
   if (product.quantity_ml === 0) return 'Sin Stock'
   if (product.min_stock_ml > 0 && product.quantity_ml < product.min_stock_ml) return 'Stock Bajo'
@@ -344,11 +360,14 @@ export function StockTable({
                 </thead>
                 <tbody>
                   {sortedProducts.map((product: EditingProduct) => {
+                    const isPorcion = usesPorcion(product.category, location)
                     const bottles = product.quantity_ml / product.format_ml
+                    const porciones = product.quantity_ml / PORCION_ML
+                    const units = isPorcion ? porciones : bottles
                     const price = product.sale_price ?? 0
                     const netoUnit = price > 0 ? Math.round(price / 1.19) : 0
-                    const totalVenta = price > 0 ? Math.round(price * bottles) : 0
-                    const totalNeto  = price > 0 ? Math.round((price / 1.19) * bottles) : 0
+                    const totalVenta = price > 0 ? Math.round(price * units) : 0
+                    const totalNeto  = price > 0 ? Math.round((price / 1.19) * units) : 0
                     const fmtCLP = (n: number) => n > 0 ? `$${n.toLocaleString('es-CL')}` : '—'
                     return (
                       <tr key={product.id} className="group border-b hover:bg-muted/30">
@@ -372,7 +391,9 @@ export function StockTable({
                         <td className="px-2 py-2 text-right">
                           <div>
                             <p className="font-medium">
-                              {getBottles(product.quantity_ml, product.format_ml)} bot.
+                              {isPorcion
+                                ? `${porciones.toFixed(0)} porc.`
+                                : `${getBottles(product.quantity_ml, product.format_ml)} bot.`}
                             </p>
                             <p className="text-sm text-muted-foreground">
                               {product.quantity_ml} ml
@@ -419,11 +440,17 @@ export function StockTable({
                         const fmtCLP = (n: number) => n > 0 ? `$${n.toLocaleString('es-CL')}` : '—'
                         const totalVenta = sortedProducts.reduce((s, p) => {
                           const price = p.sale_price ?? 0
-                          return s + (price > 0 ? Math.round(price * p.quantity_ml / p.format_ml) : 0)
+                          const u = usesPorcion(p.category, location)
+                            ? p.quantity_ml / PORCION_ML
+                            : p.quantity_ml / p.format_ml
+                          return s + (price > 0 ? Math.round(price * u) : 0)
                         }, 0)
                         const totalNeto = sortedProducts.reduce((s, p) => {
                           const price = p.sale_price ?? 0
-                          return s + (price > 0 ? Math.round((price / 1.19) * p.quantity_ml / p.format_ml) : 0)
+                          const u = usesPorcion(p.category, location)
+                            ? p.quantity_ml / PORCION_ML
+                            : p.quantity_ml / p.format_ml
+                          return s + (price > 0 ? Math.round((price / 1.19) * u) : 0)
                         }, 0)
                         return (
                           <>
