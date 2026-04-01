@@ -11,6 +11,21 @@ import { useInventory } from '@/hooks/useInventory'
 import { useRealtimeInventory } from '@/hooks/useRealtime'
 import { LOCATION_NAMES, type LocationType } from '@/types'
 
+const PORCION_ML = 75
+const SPIRIT_KEYWORDS = [
+  'gin', 'vodka', 'tequila', 'ron', 'rum', 'whisky', 'whiskey',
+  'mezcal', 'brandy', 'cognac', 'pisco', 'grappa', 'amaretto',
+  'licor', 'aperitivo', 'bourbon', 'scotch', 'destilado', 'aguardiente',
+  'vermouth', 'bitter', 'fernet', 'absenta', 'triple sec', 'cointreau',
+  'kahlua', 'baileys', 'sambuca',
+]
+
+function usesPorcion(category: string, location: LocationType): boolean {
+  if (location === 'bodega') return false
+  const lc = category.toLowerCase()
+  return SPIRIT_KEYWORDS.some(k => lc.includes(k))
+}
+
 function exportStockToCSV(
   inventory: Array<{
     quantity_ml: number
@@ -19,32 +34,59 @@ function exportStockToCSV(
       code: string
       name: string
       format_ml: number | null
+      sale_price?: number | null
       category?: { name: string } | null
     } | null
   }>,
-  locationName: string
+  locationName: string,
+  location: LocationType,
+  isAdmin: boolean
 ) {
-  const headers = ['Código', 'Producto', 'Categoría', 'Stock (ml)', 'Stock (botellas)', 'Stock Mínimo (ml)', 'Estado']
+  const fmtCLP = (n: number) => n > 0 ? `$${n.toLocaleString('es-CL')}` : '—'
+
+  const baseHeaders = ['Producto', 'Código', 'Categoría', 'Stock (bot.)', 'Stock (ml)', 'Estado']
+  const adminHeaders = ['Precio Venta', 'Neto Unit.', 'Total Venta', 'Total Neto']
+  const headers = isAdmin ? [...baseHeaders, ...adminHeaders] : baseHeaders
 
   const rows = inventory
     .filter((item) => item.product !== null)
     .map((item) => {
       const formatMl = item.product?.format_ml || 750
-      const bottles = item.quantity_ml > 0 ? (item.quantity_ml / formatMl).toFixed(2) : '0'
+      const categoryName = item.product?.category?.name || ''
+      const bottles = (item.quantity_ml / formatMl).toFixed(1)
       const status =
         item.quantity_ml === 0
           ? 'Sin Stock'
           : item.min_stock_ml && item.quantity_ml < item.min_stock_ml
           ? 'Stock Bajo'
           : 'OK'
-      return [
-        item.product?.code || '',
+
+      const baseRow = [
         item.product?.name || '',
-        item.product?.category?.name || '',
-        item.quantity_ml,
+        item.product?.code || '',
+        categoryName,
         bottles,
-        item.min_stock_ml ?? '',
+        item.quantity_ml,
         status,
+      ]
+
+      if (!isAdmin) return baseRow
+
+      const price = item.product?.sale_price ?? 0
+      const isPorcion = usesPorcion(categoryName, location)
+      const units = isPorcion
+        ? item.quantity_ml / PORCION_ML
+        : item.quantity_ml / formatMl
+      const netoUnit = price > 0 ? Math.round(price / 1.19) : 0
+      const totalVenta = price > 0 ? Math.round(price * units) : 0
+      const totalNeto = price > 0 ? Math.round((price / 1.19) * units) : 0
+
+      return [
+        ...baseRow,
+        price > 0 ? fmtCLP(price) : '—',
+        netoUnit > 0 ? fmtCLP(netoUnit) : '—',
+        totalVenta > 0 ? fmtCLP(totalVenta) : '—',
+        totalNeto > 0 ? fmtCLP(totalNeto) : '—',
       ]
     })
 
@@ -68,12 +110,14 @@ function exportStockToCSV(
 
 function ExportButton({ location }: { location: LocationType }) {
   const { data: inventory } = useInventory(location)
+  const { profile } = useAuth()
+  const isAdmin = profile?.role === 'admin'
 
   return (
     <Button
       variant="outline"
       size="sm"
-      onClick={() => exportStockToCSV(inventory || [], LOCATION_NAMES[location])}
+      onClick={() => exportStockToCSV(inventory || [], LOCATION_NAMES[location], location, isAdmin)}
       disabled={!inventory || inventory.length === 0}
     >
       <Download className="mr-2 h-4 w-4" />
