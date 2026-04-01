@@ -42,15 +42,22 @@ function exportStockToCSV(
   location: LocationType,
   isAdmin: boolean
 ) {
-  const fmtCLP = (n: number) => n > 0 ? `$${n.toLocaleString('es-CL')}` : '—'
-
   const baseHeaders = ['Producto', 'Código', 'Categoría', 'Stock (bot.)', 'Stock (ml)', 'Estado']
-  const adminHeaders = ['Precio Venta', 'Neto Unit.', 'Total Venta', 'Total Neto']
+  const adminHeaders = ['Precio Venta ($)', 'Neto Unit. ($)', 'Total Venta ($)', 'Total Neto ($)']
   const headers = isAdmin ? [...baseHeaders, ...adminHeaders] : baseHeaders
 
-  const rows = inventory
+  // Ordenar por categoría A-Z, luego por nombre A-Z dentro de cada categoría
+  const sorted = [...inventory]
     .filter((item) => item.product !== null)
-    .map((item) => {
+    .sort((a, b) => {
+      const catA = a.product?.category?.name || ''
+      const catB = b.product?.category?.name || ''
+      const catCmp = catA.localeCompare(catB, 'es')
+      if (catCmp !== 0) return catCmp
+      return (a.product?.name || '').localeCompare(b.product?.name || '', 'es')
+    })
+
+  const rows = sorted.map((item) => {
       const formatMl = item.product?.format_ml || 750
       const categoryName = item.product?.category?.name || ''
       const bottles = (item.quantity_ml / formatMl).toFixed(1)
@@ -72,21 +79,23 @@ function exportStockToCSV(
 
       if (!isAdmin) return baseRow
 
+      // Escribir precios como números crudos (sin $ ni formato) para que
+      // Excel/Sheets los interprete correctamente en CLP
       const price = item.product?.sale_price ?? 0
       const isPorcion = usesPorcion(categoryName, location)
       const units = isPorcion
         ? item.quantity_ml / PORCION_ML
         : item.quantity_ml / formatMl
-      const netoUnit = price > 0 ? Math.round(price / 1.19) : 0
-      const totalVenta = price > 0 ? Math.round(price * units) : 0
-      const totalNeto = price > 0 ? Math.round((price / 1.19) * units) : 0
+      const netoUnit = price > 0 ? Math.round(price / 1.19) : ''
+      const totalVenta = price > 0 ? Math.round(price * units) : ''
+      const totalNeto = price > 0 ? Math.round((price / 1.19) * units) : ''
 
       return [
         ...baseRow,
-        price > 0 ? fmtCLP(price) : '—',
-        netoUnit > 0 ? fmtCLP(netoUnit) : '—',
-        totalVenta > 0 ? fmtCLP(totalVenta) : '—',
-        totalNeto > 0 ? fmtCLP(totalNeto) : '—',
+        price > 0 ? price : '',
+        netoUnit,
+        totalVenta,
+        totalNeto,
       ]
     })
 
