@@ -391,9 +391,7 @@ export function StockTable({
                         <td className="px-2 py-2 text-right">
                           <div>
                             <p className="font-medium">
-                              {isPorcion
-                                ? `${porciones.toFixed(0)} porc.`
-                                : `${getBottles(product.quantity_ml, product.format_ml)} bot.`}
+                              {getBottles(product.quantity_ml, product.format_ml)} bot.
                             </p>
                             <p className="text-sm text-muted-foreground">
                               {product.quantity_ml} ml
