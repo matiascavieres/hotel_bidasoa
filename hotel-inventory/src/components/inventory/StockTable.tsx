@@ -283,16 +283,17 @@ export function StockTable({
             <div className="rounded-md border overflow-auto max-h-[calc(100vh-320px)]">
               <table className="w-full table-fixed">
                 <colgroup>
-                  <col className={isAdmin ? 'w-[28%]' : 'w-[45%]'} />
-                  <col className={isAdmin ? 'w-[12%]' : 'w-[20%]'} />
+                  <col className={isAdmin ? 'w-[25%]' : 'w-[42%]'} />
+                  <col className={isAdmin ? 'w-[12%]' : 'w-[18%]'} />
                   <col className={isAdmin ? 'w-[10%]' : 'w-[18%]'} />
-                  <col className={isAdmin ? 'w-[10%]' : 'w-[17%]'} />
+                  <col className={isAdmin ? 'w-[10%]' : 'w-[18%]'} />
                   {isAdmin && <>
                     <col className="w-[10%]" />
-                    <col className="w-[10%]" />
+                    <col className="w-[9%]" />
                     <col className="w-[10%]" />
                     <col className="w-[10%]" />
                   </>}
+                  <col className="w-[4%]" />
                 </colgroup>
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b bg-muted">
@@ -338,6 +339,7 @@ export function StockTable({
                       <th className="px-2 py-2 text-right text-sm font-medium whitespace-nowrap">Total Venta</th>
                       <th className="px-2 py-2 text-right text-sm font-medium whitespace-nowrap">Total Neto</th>
                     </>}
+                    <th className="px-2 py-2" />
                   </tr>
                 </thead>
                 <tbody>
@@ -349,7 +351,7 @@ export function StockTable({
                     const totalNeto  = price > 0 ? Math.round((price / 1.19) * bottles) : 0
                     const fmtCLP = (n: number) => n > 0 ? `$${n.toLocaleString('es-CL')}` : '—'
                     return (
-                      <tr key={product.id} className="border-b hover:bg-muted/30">
+                      <tr key={product.id} className="group border-b hover:bg-muted/30">
                         <td className="px-2 py-2">
                           <div className="flex items-center gap-2 min-w-0">
                             <ProductThumbnail imagePath={product.image_url} size={32} />
@@ -394,6 +396,15 @@ export function StockTable({
                             {fmtCLP(totalNeto)}
                           </td>
                         </>}
+                        <td className="px-1 py-2 text-center">
+                          <button
+                            onClick={() => setEditingProduct(product)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-accent"
+                            title="Editar"
+                          >
+                            <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
+                          </button>
+                        </td>
                       </tr>
                     )
                   })}
@@ -413,7 +424,7 @@ export function StockTable({
                         }, 0)
                         return (
                           <>
-                            <td colSpan={6} className="px-2 py-2 text-right text-sm font-semibold">Totales</td>
+                            <td colSpan={7} className="px-2 py-2 text-right text-sm font-semibold">Totales</td>
                             <td className="px-2 py-2 text-right text-sm tabular-nums font-bold">{fmtCLP(totalVenta)}</td>
                             <td className="px-2 py-2 text-right text-sm tabular-nums font-bold">{fmtCLP(totalNeto)}</td>
                           </>
