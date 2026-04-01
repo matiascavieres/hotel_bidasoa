@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { Download } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
@@ -96,6 +96,7 @@ export default function Stock() {
 
   const validLocations: LocationType[] = ['bodega', 'bar_casa_sanz', 'bar_hotel_bidasoa']
 
+  const [, startTransition] = useTransition()
   const [selectedTab, setSelectedTab] = useState<StockTab>(
     locationParam && validLocations.includes(locationParam)
       ? locationParam
@@ -138,7 +139,7 @@ export default function Stock() {
       {canViewAllLocations ? (
         <Tabs
           value={selectedTab}
-          onValueChange={(value) => setSelectedTab(value as StockTab)}
+          onValueChange={(value) => startTransition(() => setSelectedTab(value as StockTab))}
         >
           <TabsList>
             <TabsTrigger value="general">
