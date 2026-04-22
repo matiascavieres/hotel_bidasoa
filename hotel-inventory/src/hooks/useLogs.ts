@@ -11,6 +11,27 @@ interface LogFilters {
   location?: LocationType
 }
 
+export async function fetchLogsForExport(filters: LogFilters) {
+  let query = supabase
+    .from('audit_logs')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (filters.action && filters.action !== 'all') {
+    query = query.eq('action', filters.action)
+  }
+  if (filters.dateFrom) {
+    query = query.gte('created_at', filters.dateFrom)
+  }
+  if (filters.dateTo) {
+    query = query.lte('created_at', `${filters.dateTo}T23:59:59`)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return data ?? []
+}
+
 export function useLogs(filters: LogFilters = {}) {
   return useQuery({
     queryKey: ['logs', filters],
@@ -185,9 +206,26 @@ export function exportApprovedItemsSummary(
 
   if (itemTotals.size === 0) return false
 
+  // Build last-known stock from request_delivered logs (sorted oldest→newest)
+  const productLastBodega = new Map<string, number>()
+  const deliveredLogs = logs
+    .filter(l => l.action === 'request_delivered')
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+  for (const log of deliveredLogs) {
+    const movements = log.details.stock_movements as Array<{
+      product_name: string
+      bodega_after: number
+    }> | undefined
+    if (!movements) continue
+    for (const m of movements) {
+      productLastBodega.set(m.product_name, m.bodega_after)
+    }
+  }
+
   const headers = [
     'Producto',
-    'Cantidad Total',
+    'Cantidad Movida',
+    'Stock Final Bodega',
     'Precio Venta Unit.',
     'Total Venta ($)',
     'Precio Neto Unit.',
@@ -204,9 +242,11 @@ export function exportApprovedItemsSummary(
       const totalVenta = Math.round(sale_price * cantidad)
       const precioNeto = sale_price > 0 ? Math.round(sale_price / 1.19) : 0
       const totalNeto  = sale_price > 0 ? Math.round((sale_price / 1.19) * cantidad) : 0
+      const stockFinal = productLastBodega.has(name) ? productLastBodega.get(name) : 'N/D'
       return [
         `"${name.replace(/"/g, '""')}"`,
         cantidad,
+        stockFinal,
         sale_price > 0 ? sale_price : 'Sin precio',
         totalVenta > 0 ? totalVenta : 0,
         precioNeto > 0 ? precioNeto : 'Sin precio',

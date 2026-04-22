@@ -56,7 +56,7 @@ export function SalesFamiliaChart({ data, maxValue, showImporte = false, showBot
 
             <div
               className="bg-muted rounded-full h-2 overflow-hidden"
-              style={showBoth ? { width: '100px', flexShrink: 0 } : { flex: 1 }}
+              style={{ flex: 1 }}
             >
               <div
                 className="h-full rounded-full transition-all duration-500"

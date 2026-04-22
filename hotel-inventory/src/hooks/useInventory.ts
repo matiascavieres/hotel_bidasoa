@@ -302,3 +302,26 @@ export function useCreateMissingInventory() {
     },
   })
 }
+
+export function useApplySalesPrices() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (updates: Array<{ productId: string; salePrice: number }>) => {
+      let updated = 0
+      for (const { productId, salePrice } of updates) {
+        const { error } = await supabase
+          .from('products')
+          .update({ sale_price: salePrice })
+          .eq('id', productId)
+        if (error) throw error
+        updated++
+      }
+      return updated
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.invalidateQueries({ queryKey: ['inventory'] })
+    },
+  })
+}

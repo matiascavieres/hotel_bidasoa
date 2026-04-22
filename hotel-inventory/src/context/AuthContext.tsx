@@ -65,6 +65,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
+      // TOKEN_REFRESHED solo actualiza la sesión, no recarga perfil ni muestra spinner
+      if (_event === 'TOKEN_REFRESHED') {
+        setSession(session)
+        return
+      }
+
       setSession(session)
       setUser(session?.user ?? null)
 

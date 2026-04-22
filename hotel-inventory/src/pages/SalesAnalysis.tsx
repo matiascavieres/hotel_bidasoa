@@ -449,17 +449,6 @@ export default function SalesAnalysis() {
               Mes anterior
             </Button>
 
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Buscar receta..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="pl-9 w-[180px]"
-              />
-            </div>
-
             {/* Export */}
             <Button variant="outline" size="sm" onClick={handleExport}>
               <Download className="mr-1.5 h-4 w-4" />
@@ -630,6 +619,24 @@ export default function SalesAnalysis() {
           placeholder="Todos los grupos"
           className="w-[220px]"
         />
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar receta..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="pl-9 h-9 w-[200px]"
+          />
+          {searchQuery && (
+            <button
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              onClick={() => setSearchQuery('')}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
 
         {hasFilters && (
           <Button variant="outline" size="sm" onClick={() => {

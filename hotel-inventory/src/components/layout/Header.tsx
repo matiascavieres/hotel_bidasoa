@@ -55,6 +55,7 @@ export function Header({ sidebarCollapsed, onToggleSidebar }: HeaderProps) {
           size="icon"
           onClick={onToggleSidebar}
           className="hidden md:flex"
+          title={sidebarCollapsed ? 'Expandir menú' : 'Colapsar menú'}
         >
           {sidebarCollapsed ? (
             <ChevronRight className="h-5 w-5" />
