@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
+import { useMemo, useState } from 'react'
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import type { SalesData } from '@/types'
 
 interface SalesPieChartProps {
@@ -25,6 +25,8 @@ interface ChartEntry {
 }
 
 export function SalesPieChart({ data, periodo, onSliceClick, centerLabel, centerSubLabel = 'uds. totales', useImporte = false }: SalesPieChartProps) {
+  const [activeEntry, setActiveEntry] = useState<ChartEntry | null>(null)
+
   const chartData = useMemo(() => {
     const grupoMap = new Map<string, { value: number; bruto: number }>()
 
@@ -72,25 +74,6 @@ export function SalesPieChart({ data, periodo, onSliceClick, centerLabel, center
 
   if (chartData.length === 0) return null
 
-  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: ChartEntry }> }) => {
-    if (!active || !payload?.length) return null
-    const entry = payload[0].payload
-    return (
-      <div className="rounded-md border bg-background p-2 shadow-sm text-sm">
-        <p className="font-medium">{entry.name}</p>
-        {useImporte ? (
-          <>
-            <p className="text-muted-foreground">${entry.value.toLocaleString('es-CL')} neto</p>
-            <p className="text-muted-foreground">${entry.bruto.toLocaleString('es-CL')} venta</p>
-          </>
-        ) : (
-          <p className="text-muted-foreground">{entry.value.toLocaleString('es-CL')} uds.</p>
-        )}
-        <p className="text-muted-foreground">{entry.percent.toFixed(1)}%</p>
-      </div>
-    )
-  }
-
   const displayLabel = centerLabel !== undefined
     ? (typeof centerLabel === 'number' ? centerLabel.toLocaleString('es-CL') : centerLabel)
     : null
@@ -109,6 +92,8 @@ export function SalesPieChart({ data, periodo, onSliceClick, centerLabel, center
               paddingAngle={2}
               dataKey="value"
               onClick={(entry) => onSliceClick?.(entry.name)}
+              onMouseEnter={(entry) => setActiveEntry(entry as ChartEntry)}
+              onMouseLeave={() => setActiveEntry(null)}
               className="cursor-pointer"
             >
               {chartData.map((_, index) => (
@@ -118,16 +103,32 @@ export function SalesPieChart({ data, periodo, onSliceClick, centerLabel, center
                 />
               ))}
             </Pie>
-            <Tooltip content={<CustomTooltip />} />
           </PieChart>
         </ResponsiveContainer>
 
+        {/* Centro del donut */}
         {displayLabel !== null && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="text-center">
               <p className="text-2xl font-bold tabular-nums">{displayLabel}</p>
               <p className="text-xs text-muted-foreground">{centerSubLabel}</p>
             </div>
+          </div>
+        )}
+
+        {/* Tooltip fijo en esquina superior derecha — no se superpone al centro */}
+        {activeEntry && (
+          <div className="absolute top-2 right-2 rounded-md border bg-background/95 shadow-md text-sm p-2.5 pointer-events-none min-w-[140px]">
+            <p className="font-semibold mb-1">{activeEntry.name}</p>
+            {useImporte ? (
+              <>
+                <p className="text-muted-foreground">${activeEntry.value.toLocaleString('es-CL')} neto</p>
+                <p className="text-muted-foreground text-xs">${activeEntry.bruto.toLocaleString('es-CL')} venta</p>
+              </>
+            ) : (
+              <p className="text-muted-foreground">{activeEntry.value.toLocaleString('es-CL')} uds.</p>
+            )}
+            <p className="text-muted-foreground font-medium mt-1">{activeEntry.percent.toFixed(1)}%</p>
           </div>
         )}
       </div>

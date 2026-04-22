@@ -13,14 +13,14 @@ export default function Inbound() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold">Inbound</h1>
           <p className="text-muted-foreground">
             Registro de ingresos de productos desde proveedores
           </p>
         </div>
-        <Link to="/inbound/nuevo">
+        <Link to="/inbound/nuevo" className="shrink-0">
           <Button>
             <Plus className="mr-2 h-4 w-4" />
             Nuevo Ingreso

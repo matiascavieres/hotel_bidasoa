@@ -3,6 +3,9 @@ import { useAuth } from '@/context/AuthContext'
 import { supabase, createRealtimeChannel } from '@/lib/supabase'
 import type { LogAction } from '@/types'
 
+// Actions only relevant to bodegueros / admins (not to bartenders)
+const BODEGA_ONLY_ACTIONS = new Set(['request_created'])
+
 export interface Notification {
   id: string
   action: LogAction
@@ -88,7 +91,7 @@ function mapPayloadToNotification(payload: Record<string, unknown>): Notificatio
 }
 
 export function useRealtimeNotifications() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
 
@@ -106,6 +109,12 @@ export function useRealtimeNotifications() {
 
           // Don't notify about own actions
           if (newRecord.user_id === user?.id) return
+
+          const action = newRecord.action as string
+
+          // request_created notifications are only relevant for bodegueros and admins
+          const isBodegaRole = profile?.role === 'admin' || profile?.role === 'bodeguero'
+          if (BODEGA_ONLY_ACTIONS.has(action) && !isBodegaRole) return
 
           const notification = mapPayloadToNotification(newRecord)
 

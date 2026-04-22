@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { Download } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
@@ -11,6 +11,21 @@ import { useInventory } from '@/hooks/useInventory'
 import { useRealtimeInventory } from '@/hooks/useRealtime'
 import { LOCATION_NAMES, type LocationType } from '@/types'
 
+const PORCION_ML = 75
+const SPIRIT_KEYWORDS = [
+  'gin', 'vodka', 'tequila', 'ron', 'rum', 'whisky', 'whiskey',
+  'mezcal', 'brandy', 'cognac', 'pisco', 'grappa', 'amaretto',
+  'licor', 'aperitivo', 'bourbon', 'scotch', 'destilado', 'aguardiente',
+  'vermouth', 'bitter', 'fernet', 'absenta', 'triple sec', 'cointreau',
+  'kahlua', 'baileys', 'sambuca',
+]
+
+function usesPorcion(category: string, location: LocationType): boolean {
+  if (location === 'bodega') return false
+  const lc = category.toLowerCase()
+  return SPIRIT_KEYWORDS.some(k => lc.includes(k))
+}
+
 function exportStockToCSV(
   inventory: Array<{
     quantity_ml: number
@@ -19,32 +34,68 @@ function exportStockToCSV(
       code: string
       name: string
       format_ml: number | null
+      sale_price?: number | null
       category?: { name: string } | null
     } | null
   }>,
-  locationName: string
+  locationName: string,
+  location: LocationType,
+  isAdmin: boolean
 ) {
-  const headers = ['Código', 'Producto', 'Categoría', 'Stock (ml)', 'Stock (botellas)', 'Stock Mínimo (ml)', 'Estado']
+  const baseHeaders = ['Producto', 'Código', 'Categoría', 'Stock (bot.)', 'Stock (ml)', 'Estado']
+  const adminHeaders = ['Precio Venta ($)', 'Neto Unit. ($)', 'Total Venta ($)', 'Total Neto ($)']
+  const headers = isAdmin ? [...baseHeaders, ...adminHeaders] : baseHeaders
 
-  const rows = inventory
+  // Ordenar por categoría A-Z, luego por nombre A-Z dentro de cada categoría
+  const sorted = [...inventory]
     .filter((item) => item.product !== null)
-    .map((item) => {
+    .sort((a, b) => {
+      const catA = a.product?.category?.name || ''
+      const catB = b.product?.category?.name || ''
+      const catCmp = catA.localeCompare(catB, 'es')
+      if (catCmp !== 0) return catCmp
+      return (a.product?.name || '').localeCompare(b.product?.name || '', 'es')
+    })
+
+  const rows = sorted.map((item) => {
       const formatMl = item.product?.format_ml || 750
-      const bottles = item.quantity_ml > 0 ? (item.quantity_ml / formatMl).toFixed(2) : '0'
+      const categoryName = item.product?.category?.name || ''
+      const bottles = (item.quantity_ml / formatMl).toFixed(1)
       const status =
         item.quantity_ml === 0
           ? 'Sin Stock'
           : item.min_stock_ml && item.quantity_ml < item.min_stock_ml
           ? 'Stock Bajo'
           : 'OK'
-      return [
-        item.product?.code || '',
+
+      const baseRow = [
         item.product?.name || '',
-        item.product?.category?.name || '',
-        item.quantity_ml,
+        item.product?.code || '',
+        categoryName,
         bottles,
-        item.min_stock_ml ?? '',
+        item.quantity_ml,
         status,
+      ]
+
+      if (!isAdmin) return baseRow
+
+      // Escribir precios como números crudos (sin $ ni formato) para que
+      // Excel/Sheets los interprete correctamente en CLP
+      const price = item.product?.sale_price ?? 0
+      const isPorcion = usesPorcion(categoryName, location)
+      const units = isPorcion
+        ? item.quantity_ml / PORCION_ML
+        : item.quantity_ml / formatMl
+      const netoUnit = price > 0 ? Math.round(price / 1.19) : ''
+      const totalVenta = price > 0 ? Math.round(price * units) : ''
+      const totalNeto = price > 0 ? Math.round((price / 1.19) * units) : ''
+
+      return [
+        ...baseRow,
+        price > 0 ? price : '',
+        netoUnit,
+        totalVenta,
+        totalNeto,
       ]
     })
 
@@ -68,12 +119,14 @@ function exportStockToCSV(
 
 function ExportButton({ location }: { location: LocationType }) {
   const { data: inventory } = useInventory(location)
+  const { profile } = useAuth()
+  const isAdmin = profile?.role === 'admin'
 
   return (
     <Button
       variant="outline"
       size="sm"
-      onClick={() => exportStockToCSV(inventory || [], LOCATION_NAMES[location])}
+      onClick={() => exportStockToCSV(inventory || [], LOCATION_NAMES[location], location, isAdmin)}
       disabled={!inventory || inventory.length === 0}
     >
       <Download className="mr-2 h-4 w-4" />
@@ -96,6 +149,7 @@ export default function Stock() {
 
   const validLocations: LocationType[] = ['bodega', 'bar_casa_sanz', 'bar_hotel_bidasoa']
 
+  const [, startTransition] = useTransition()
   const [selectedTab, setSelectedTab] = useState<StockTab>(
     locationParam && validLocations.includes(locationParam)
       ? locationParam
@@ -138,7 +192,7 @@ export default function Stock() {
       {canViewAllLocations ? (
         <Tabs
           value={selectedTab}
-          onValueChange={(value) => setSelectedTab(value as StockTab)}
+          onValueChange={(value) => startTransition(() => setSelectedTab(value as StockTab))}
         >
           <TabsList>
             <TabsTrigger value="general">

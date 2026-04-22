@@ -292,7 +292,10 @@ export interface SalesData {
   created_at: string
 }
 
-// Monthly sales record (one entry per recipe per calendar month)
+// Location filter for sales analysis: '' = all, or specific restaurant
+export type SalesLocationFilter = '' | 'bar_casa_sanz' | 'bar_hotel_bidasoa'
+
+// Monthly sales record (one entry per recipe per calendar month per location)
 export interface SalesMonthly {
   id: string
   receta: string
@@ -303,6 +306,7 @@ export interface SalesMonthly {
   cantidad: number
   importe_unitario: number
   importe_total: number
+  location: string   // '' | 'bar_casa_sanz' | 'bar_hotel_bidasoa'
   created_at: string
   updated_at: string
 }

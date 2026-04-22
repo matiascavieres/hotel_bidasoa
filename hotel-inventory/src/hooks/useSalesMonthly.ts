@@ -46,6 +46,8 @@ export interface UseSalesMonthlyOptions {
   /** Exact grupo filter */
   grupos?: string[]
   searchQuery?: string
+  /** Filter by restaurant location: 'bar_casa_sanz' | 'bar_hotel_bidasoa' | undefined = all */
+  location?: string
 }
 
 // Aggregated view per recipe across the date range
@@ -59,12 +61,12 @@ export interface SalesMonthlyAgg extends Omit<SalesMonthly, 'year' | 'month' | '
 // ── Main query hook ────────────────────────────────────────────────────────────
 
 export function useSalesMonthly(options: UseSalesMonthlyOptions) {
-  const { fromMonth, toMonth, familiaFilter, grupos, searchQuery } = options
+  const { fromMonth, toMonth, familiaFilter, grupos, searchQuery, location } = options
   const { year: fromYear, month: fromMonthNum } = parseYearMonth(fromMonth)
   const { year: toYear,   month: toMonthNum   } = parseYearMonth(toMonth)
 
   return useQuery({
-    queryKey: ['sales_monthly', fromMonth, toMonth, familiaFilter, grupos, searchQuery],
+    queryKey: ['sales_monthly', fromMonth, toMonth, familiaFilter, grupos, searchQuery, location],
     queryFn: async () => {
       let q = supabase
         .from('sales_monthly')
@@ -94,6 +96,10 @@ export function useSalesMonthly(options: UseSalesMonthlyOptions) {
         q = q.ilike('receta', `%${searchQuery}%`)
       }
 
+      if (location) {
+        q = q.eq('location', location)
+      }
+
       const { data, error } = await q
       if (error) throw error
 
@@ -107,17 +113,17 @@ export function useSalesMonthly(options: UseSalesMonthlyOptions) {
           })
         : rows
 
-      // Aggregate by receta (sum quantities & importe across months)
+      // Aggregate by (receta, location) so same-named recipes from different
+      // restaurants are kept as separate rows in the combined "Todos" view.
       const map = new Map<string, SalesMonthlyAgg>()
       for (const row of filtered) {
-        const key = row.receta.toLowerCase()
+        const key = `${row.receta.toLowerCase()}::${row.location}`
         const existing = map.get(key)
         if (existing) {
           existing.cantidad      += row.cantidad
           existing.importe_total += row.importe_total
           existing.rowIds.push(row.id)
           existing.isSingleRecord = false
-          // Keep first importe_unitario (or most recent – here we keep first)
         } else {
           map.set(key, {
             id:               row.id,
@@ -127,6 +133,7 @@ export function useSalesMonthly(options: UseSalesMonthlyOptions) {
             cantidad:         row.cantidad,
             importe_unitario: row.importe_unitario,
             importe_total:    row.importe_total,
+            location:         row.location,
             created_at:       row.created_at,
             rowIds:           [row.id],
             isSingleRecord:   true,
@@ -141,12 +148,12 @@ export function useSalesMonthly(options: UseSalesMonthlyOptions) {
 
 // ── Groups list ────────────────────────────────────────────────────────────────
 
-export function useSalesMonthlyGrupos(fromMonth: string, toMonth: string) {
+export function useSalesMonthlyGrupos(fromMonth: string, toMonth: string, location?: string) {
   const { year: fromYear, month: fromMonthNum } = parseYearMonth(fromMonth)
   const { year: toYear,   month: toMonthNum   } = parseYearMonth(toMonth)
 
   return useQuery({
-    queryKey: ['sales_monthly_grupos', fromMonth, toMonth],
+    queryKey: ['sales_monthly_grupos', fromMonth, toMonth, location],
     queryFn: async () => {
       let q = supabase.from('sales_monthly').select('grupo')
 
@@ -154,6 +161,10 @@ export function useSalesMonthlyGrupos(fromMonth: string, toMonth: string) {
         q = q.eq('year', fromYear).gte('month', fromMonthNum).lte('month', toMonthNum)
       } else {
         q = q.gte('year', fromYear).lte('year', toYear)
+      }
+
+      if (location) {
+        q = q.eq('location', location)
       }
 
       const { data, error } = await q
@@ -178,7 +189,6 @@ export const VINOS_GRUPOS = [
   'Pinot Noir', 'Por Copas', 'Rose', 'Sauvignon Blanc',
 ]
 
-const BAR_GRUPOS_SET   = new Set(BAR_GRUPOS.map(g => g.toLowerCase()))
 const VINOS_GRUPOS_SET = new Set(VINOS_GRUPOS.map(g => g.toLowerCase()))
 
 // ── Familia totals (for KPI breakdown) ────────────────────────────────────────
@@ -191,7 +201,7 @@ export interface FamiliaTotals {
   totalUnits:  number
 }
 
-export function useSalesMonthlyTotals(fromMonth: string, toMonth: string): {
+export function useSalesMonthlyTotals(fromMonth: string, toMonth: string, location?: string): {
   data: FamiliaTotals | undefined
   isLoading: boolean
 } {
@@ -199,7 +209,7 @@ export function useSalesMonthlyTotals(fromMonth: string, toMonth: string): {
   const { year: toYear,   month: toMonthNum   } = parseYearMonth(toMonth)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['sales_monthly_totals', fromMonth, toMonth],
+    queryKey: ['sales_monthly_totals', fromMonth, toMonth, location],
     queryFn: async () => {
       let q = supabase
         .from('sales_monthly')
@@ -209,6 +219,10 @@ export function useSalesMonthlyTotals(fromMonth: string, toMonth: string): {
         q = q.eq('year', fromYear).gte('month', fromMonthNum).lte('month', toMonthNum)
       } else {
         q = q.gte('year', fromYear).lte('year', toYear)
+      }
+
+      if (location) {
+        q = q.eq('location', location)
       }
 
       const { data, error } = await q
@@ -223,11 +237,14 @@ export function useSalesMonthlyTotals(fromMonth: string, toMonth: string): {
         const f = r.familia.toLowerCase()
         const g = (r.grupo || '').toLowerCase()
         if (f.includes('alimentaci')) {
+          // All food (Cocina / Alimentación) regardless of restaurant
           totals.cocina += r.importe_total
         } else if (f.includes('bebestibles')) {
-          if (BAR_GRUPOS_SET.has(g))   totals.bar   += r.importe_total
-          else if (VINOS_GRUPOS_SET.has(g)) totals.vinos += r.importe_total
+          // Wines go to Vinos; everything else (bar, cocktails, new unknown groups) → Bar
+          if (VINOS_GRUPOS_SET.has(g)) totals.vinos += r.importe_total
+          else                         totals.bar   += r.importe_total
         }
+        // Unknown familia → included in total but not broken down
       }
 
       return totals
@@ -281,15 +298,20 @@ export async function upsertSalesMonthlyRecord(record: {
   month: number
   cantidad: number
   importe_unitario: number
+  location: string
 }) {
-  const importe_total = record.cantidad * record.importe_unitario
-
-  const { error } = await supabase
-    .from('sales_monthly')
-    .upsert(
-      { ...record, importe_total },
-      { onConflict: 'year,month,receta', ignoreDuplicates: false }
-    )
+  // Use RPC to bypass PostgREST on_conflict handling — the SQL function uses
+  // native ON CONFLICT which works reliably with composite unique constraints.
+  const { error } = await supabase.rpc('upsert_sales_monthly_record', {
+    p_receta:           record.receta,
+    p_grupo:            record.grupo,
+    p_familia:          record.familia,
+    p_year:             record.year,
+    p_month:            record.month,
+    p_cantidad:         Math.round(record.cantidad),
+    p_importe_unitario: Math.round(record.importe_unitario),
+    p_location:         record.location,
+  })
 
   if (error) throw error
 }

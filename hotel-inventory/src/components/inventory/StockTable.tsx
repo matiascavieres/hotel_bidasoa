@@ -77,6 +77,22 @@ type StockSortField = 'name' | 'category' | 'quantity_ml' | 'status'
 type SortDirection = 'asc' | 'desc'
 type ViewMode = 'list' | 'grid'
 
+// Destilados/licores vendidos por porción en el bar (75ml = 1 porción)
+const PORCION_ML = 75
+const SPIRIT_KEYWORDS = [
+  'gin', 'vodka', 'tequila', 'ron', 'rum', 'whisky', 'whiskey',
+  'mezcal', 'brandy', 'cognac', 'pisco', 'grappa', 'amaretto',
+  'licor', 'aperitivo', 'bourbon', 'scotch', 'destilado', 'aguardiente',
+  'vermouth', 'bitter', 'fernet', 'absenta', 'triple sec', 'cointreau',
+  'kahlua', 'baileys', 'sambuca',
+]
+
+function usesPorcion(category: string, location: LocationType): boolean {
+  if (location === 'bodega') return false
+  const lc = category.toLowerCase()
+  return SPIRIT_KEYWORDS.some(k => lc.includes(k))
+}
+
 const getEstado = (product: EditingProduct): string => {
   if (product.quantity_ml === 0) return 'Sin Stock'
   if (product.min_stock_ml > 0 && product.quantity_ml < product.min_stock_ml) return 'Stock Bajo'
@@ -283,16 +299,17 @@ export function StockTable({
             <div className="rounded-md border overflow-auto max-h-[calc(100vh-320px)]">
               <table className="w-full table-fixed">
                 <colgroup>
-                  <col className={isAdmin ? 'w-[28%]' : 'w-[45%]'} />
-                  <col className={isAdmin ? 'w-[12%]' : 'w-[20%]'} />
+                  <col className={isAdmin ? 'w-[25%]' : 'w-[42%]'} />
+                  <col className={isAdmin ? 'w-[12%]' : 'w-[18%]'} />
                   <col className={isAdmin ? 'w-[10%]' : 'w-[18%]'} />
-                  <col className={isAdmin ? 'w-[10%]' : 'w-[17%]'} />
+                  <col className={isAdmin ? 'w-[10%]' : 'w-[18%]'} />
                   {isAdmin && <>
                     <col className="w-[10%]" />
-                    <col className="w-[10%]" />
+                    <col className="w-[9%]" />
                     <col className="w-[10%]" />
                     <col className="w-[10%]" />
                   </>}
+                  <col className="w-[4%]" />
                 </colgroup>
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b bg-muted">
@@ -338,23 +355,30 @@ export function StockTable({
                       <th className="px-2 py-2 text-right text-sm font-medium whitespace-nowrap">Total Venta</th>
                       <th className="px-2 py-2 text-right text-sm font-medium whitespace-nowrap">Total Neto</th>
                     </>}
+                    <th className="px-2 py-2" />
                   </tr>
                 </thead>
                 <tbody>
                   {sortedProducts.map((product: EditingProduct) => {
+                    const isPorcion = usesPorcion(product.category, location)
                     const bottles = product.quantity_ml / product.format_ml
+                    const porciones = product.quantity_ml / PORCION_ML
+                    const units = isPorcion ? porciones : bottles
                     const price = product.sale_price ?? 0
                     const netoUnit = price > 0 ? Math.round(price / 1.19) : 0
-                    const totalVenta = price > 0 ? Math.round(price * bottles) : 0
-                    const totalNeto  = price > 0 ? Math.round((price / 1.19) * bottles) : 0
+                    const totalVenta = price > 0 ? Math.round(price * units) : 0
+                    const totalNeto  = price > 0 ? Math.round((price / 1.19) * units) : 0
                     const fmtCLP = (n: number) => n > 0 ? `$${n.toLocaleString('es-CL')}` : '—'
                     return (
-                      <tr key={product.id} className="border-b hover:bg-muted/30">
+                      <tr key={product.id} className="group border-b hover:bg-muted/30">
                         <td className="px-2 py-2">
-                          <div className="flex items-center gap-2 min-w-0">
+                          <div
+                            className="flex items-center gap-2 min-w-0 cursor-pointer"
+                            onClick={() => setEditingProduct(product)}
+                          >
                             <ProductThumbnail imagePath={product.image_url} size={32} />
                             <div className="min-w-0">
-                              <p className="font-medium truncate">{product.name}</p>
+                              <p className="font-medium truncate hover:underline">{product.name}</p>
                               <p className="text-sm text-muted-foreground truncate">
                                 {product.code} • {product.format_ml}ml
                               </p>
@@ -394,6 +418,15 @@ export function StockTable({
                             {fmtCLP(totalNeto)}
                           </td>
                         </>}
+                        <td className="px-1 py-2 text-center">
+                          <button
+                            onClick={() => setEditingProduct(product)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-accent"
+                            title="Editar"
+                          >
+                            <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
+                          </button>
+                        </td>
                       </tr>
                     )
                   })}
@@ -405,15 +438,21 @@ export function StockTable({
                         const fmtCLP = (n: number) => n > 0 ? `$${n.toLocaleString('es-CL')}` : '—'
                         const totalVenta = sortedProducts.reduce((s, p) => {
                           const price = p.sale_price ?? 0
-                          return s + (price > 0 ? Math.round(price * p.quantity_ml / p.format_ml) : 0)
+                          const u = usesPorcion(p.category, location)
+                            ? p.quantity_ml / PORCION_ML
+                            : p.quantity_ml / p.format_ml
+                          return s + (price > 0 ? Math.round(price * u) : 0)
                         }, 0)
                         const totalNeto = sortedProducts.reduce((s, p) => {
                           const price = p.sale_price ?? 0
-                          return s + (price > 0 ? Math.round((price / 1.19) * p.quantity_ml / p.format_ml) : 0)
+                          const u = usesPorcion(p.category, location)
+                            ? p.quantity_ml / PORCION_ML
+                            : p.quantity_ml / p.format_ml
+                          return s + (price > 0 ? Math.round((price / 1.19) * u) : 0)
                         }, 0)
                         return (
                           <>
-                            <td colSpan={6} className="px-2 py-2 text-right text-sm font-semibold">Totales</td>
+                            <td colSpan={7} className="px-2 py-2 text-right text-sm font-semibold">Totales</td>
                             <td className="px-2 py-2 text-right text-sm tabular-nums font-bold">{fmtCLP(totalVenta)}</td>
                             <td className="px-2 py-2 text-right text-sm tabular-nums font-bold">{fmtCLP(totalNeto)}</td>
                           </>

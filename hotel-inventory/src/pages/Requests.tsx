@@ -23,8 +23,8 @@ export default function Requests() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold">Solicitudes</h1>
           <p className="text-muted-foreground">
             {isBodeguero
@@ -32,7 +32,7 @@ export default function Requests() {
               : 'Tus solicitudes de productos'}
           </p>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap justify-end">
+        <div className="flex shrink-0 items-center gap-2 flex-wrap justify-end">
           {isBodeguero && (
             <Select
               value={locationFilter}

@@ -22,6 +22,7 @@ interface ProductRow {
   code: string
   name: string
   category: string
+  category_id?: string
   format_ml: number
   sale_price: number | null
   stock: Record<LocationType, { quantity_ml: number; min_stock_ml: number }>
@@ -69,6 +70,7 @@ export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
         code: product.code,
         name: product.name,
         category: product.category?.name || 'Sin categoria',
+        category_id: product.category?.id,
         format_ml: product.format_ml || 750,
         sale_price: (product as { sale_price?: number | null }).sale_price ?? null,
         stock: stock as Record<LocationType, { quantity_ml: number; min_stock_ml: number }>,
@@ -385,8 +387,10 @@ export function StockGeneralView({ searchQuery }: StockGeneralViewProps) {
             id: editingCell.row.id,
             code: editingCell.row.code,
             name: editingCell.row.name,
+            category_id: editingCell.row.category_id,
             category: editingCell.row.category,
             format_ml: editingCell.row.format_ml,
+            image_url: null,
             quantity_ml: editingCell.row.stock[editingCell.location].quantity_ml,
             min_stock_ml: editingCell.row.stock[editingCell.location].min_stock_ml,
             sale_price: editingCell.row.sale_price,
